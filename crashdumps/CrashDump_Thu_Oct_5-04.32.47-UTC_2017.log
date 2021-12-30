@@ -1,0 +1,93 @@
+Tesseract Crash Dump Thu Oct 5 04:32:47 UTC 2017
+
+Error: Plugin attempted to register jasonwynn10\murder\events\MurderListener while not enabled
+File: /src/pocketmine/plugin/PluginManager
+Line: 692
+Type: notice
+
+Code:
+[683] 	 * Registers all the events in the given Listener class
+[684] 	 *
+[685] 	 * @param Listener $listener
+[686] 	 * @param Plugin   $plugin
+[687] 	 *
+[688] 	 * @throws PluginException
+[689] 	 */
+[690] 	public function registerEvents(Listener $listener, Plugin $plugin){
+[691] 		if(!$plugin->isEnabled()){
+[692] 			throw new PluginException("Plugin attempted to register " . get_class($listener) . " while not enabled");
+[693] 		}
+[694] 
+[695] 		$reflection = new \ReflectionClass(get_class($listener));
+[696] 		foreach($reflection->getMethods(\ReflectionMethod::IS_PUBLIC) as $method){
+[697] 			if(!$method->isStatic()){
+[698] 				$priority = EventPriority::NORMAL;
+[699] 				$ignoreCancelled = false;
+[700] 				if(preg_match("/^[\t ]*\\* @priority[\t ]{1,}([a-zA-Z]{1,})/m", (string) $method->getDocComment(), $matches) > 0){
+[701] 					$matches[1] = strtoupper($matches[1]);
+[702] 					if(defined(EventPriority::class . "::" . $matches[1])){
+
+Backtrace:
+#0 /src/pocketmine/plugin/PharPluginLoader(103): jasonwynn10\murder\Main->onLoad(boolean)
+#1 /src/pocketmine/plugin/PharPluginLoader(65): pocketmine\plugin\PharPluginLoader->initPlugin(jasonwynn10\murder\Main object, pocketmine\plugin\PluginDescription object, string /storage/emulated/0/PocketMine/plugins/MurderMysteryPMMP, string phar:///storage/emulated/0/PocketMine/plugins/MurderMysteryPMMP_v0.1.0.phar)
+#2 /src/pocketmine/plugin/PluginManager(311): pocketmine\plugin\PharPluginLoader->loadPlugin(string phar:///storage/emulated/0/PocketMine/plugins/MurderMysteryPMMP_v0.1.0.phar)
+#3 /src/pocketmine/plugin/PluginManager(245): pocketmine\plugin\PluginManager->loadPlugin(string /storage/emulated/0/PocketMine/plugins/MurderMysteryPMMP_v0.1.0.phar, array Array())
+#4 /src/pocketmine/Server(503): pocketmine\plugin\PluginManager->loadPlugins(string /storage/emulated/0/PocketMine/plugins/)
+#5 /src/pocketmine/PocketMine(488): pocketmine\Server->__construct(BaseClassLoader object, pocketmine\utils\MainLogger object, string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/, string /storage/emulated/0/PocketMine/, string /storage/emulated/0/PocketMine/plugins/, string unknown)
+#6 (1): require_once(string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/src/pocketmine/PocketMine.php)
+
+Tesseract version: 0000000000000000000000000000000000000000 [Protocol 113; API 3.0.1]
+uname -a: Linux localhost 3.10.65-8631431 #2 SMP PREEMPT Fri Nov 18 13:31:37 KST 2016 armv7l
+PHP version: 7.0.3
+Zend version: 3.0.0
+OS : Linux, android
+
+Server uptime: 27 seconds
+Number of loaded worlds: 0
+Players online: 0/20
+
+Loaded plugins:
+ManyWorlds 2.1.0 by aliuly for API(s) 2.0.0
+FaceLogin 1.0.0 by Muqsit for API(s) 2.0.0, 3.0.0, 3.0.0-ALPHA4, 3.0.0-ALPHA5, 3.0.0-ALPHA6, 3.0.0-ALPHA67
+SimpleAuth 1.8.1 by PocketMine Team, shoghicp, awzaw for API(s) 2.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3, 3.0.0-ALPHA4, 3.0.0-ALPHA5
+EconomyAPI 2.0.9 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyAuction 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyCasino 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyJob 2.0.4 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyLand 2.0.9 by onebone for API(s) 1.12.0
+EconomyPShop 2.0.2 by onebone for API(s) 1.12.0
+EconomySell 2.0.7 by onebone for API(s) 1.12.0
+EconomyShop 2.0.7 by onebone for API(s) 1.12.0
+ItemCMD 1 by TonyDroidd for API(s) 1.12.0
+Bedwars 0.1 by EpicSteve33 for API(s) 1.15.0
+SClearLagg 1 by Sergey_Dertan for API(s) 1.8.0
+Broadcaster 1.16 by EvolSoft for API(s) 1.12.0
+EconomyTax 2.0.3 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyUsury 1.0.1 by onebone for API(s) 1.12.0
+AntiSpam 1.3 by xBeastMode for API(s) 2.0.0
+DevTools 1.11.0 by PocketMine Team for API(s) 3.0.0-ALPHA2
+Sell 2 by Muqsit, KairusDarkSeeker for API(s) 2.0.0
+Murder 0.3 [TG] by TheGrittlex for API(s) 3.0.0
+PurePerms 1.3.5 by 64FF00 for API(s) 1.13.0, 2.0.0
+MagicTelePortal 1.3.2 by aliuly for API(s) 1.10.0
+SimpleAuthHelper 2.0.1 by aliuly for API(s) 1.12.0
+StatusBoard_Planet 1 by ThaiEdit for API(s) 1.0.0, 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2
+ReportHacker 1.0.0 by applqpak for API(s) 1.0.0
+JoinItems 1 by MaxFreeze for API(s) 2.0.0
+FactionsPro 0.1#Beta by Array for API(s) 1.14.0, 2.0.0
+DailyReward 1.3 by MrDoni98 for API(s) 3.0.0, 3.0.0-ALPHA6
+AntiServerStop 1.1 by paetti for API(s) 1.0.0, 2.0.0, 3.0.0, 3.0.1, 3.1.0, 3.0.0-ALPHA1, 4.0.0, 5.0.0
+BackPackPE 2 by LordHippo for API(s) 2.0.0BETA
+BuyXP 1.0.0 by LordHippo for API(s) 1.0.0, 2.0.0, 3.0.0, 3.0.0-ALPHA5
+Fly 1.0.0 by iiInfinityHD for API(s) 2.0.0
+NapThe 4 by  for API(s) 3.0.0
+SETVIP 2.3 by MCPEVN TEAM for API(s) 3.0.0
+LuatStaff 1 by ThinkerS for API(s) 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3
+LuatChoi 1 by ThinkerS for API(s) 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3
+BangGia 0.5 by ThinkerS for API(s) 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3
+AdvancedKits 5.0b1 by luca28pet for API(s) 2.0.0
+Trade[PTK] 1 by PTK-KienPham for API(s) 2.0.0, 3.0.0
+ThongTin 1 by PMCoderTeam, ThinkerS, NP-NghiaPham, Zacky for API(s) 2.0.0
+stone 1.2.0 by ฟรองซ์เอง ลบเครดิตกุตบ 555+ for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 3.0.0-ALPHA6, 3.0.0-ALPHA5, 3.0.0-ALPHA4, 2.0.0
+OpLogin 1 by  for API(s) 2.0.0
+QuayHom_Lordsb 0.1pro by ThinkerS for API(s) 3.0.0, 2.1.0

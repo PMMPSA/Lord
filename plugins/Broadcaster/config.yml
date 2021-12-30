@@ -1,0 +1,19 @@
+---
+prefix: "§8❖§f"
+suffix: "[A]"
+time: 30
+sendmessage-format: "&e[{TIME}] &b[{PREFIX}] {SUFFIX} &a{SENDER}&e>&f {MESSAGE}"
+datetime-format: "H:i:s"
+broadcast-enabled: true
+messages:
+ - "&b{PREFIX}&f Vote Tại:§b"
+ - "&b{PREFIX}&f Mua§c§o ™VIP™§r§6 để hoàn thành§a giấc mơ§b bay lượn§6 trong server"
+ - "&b{PREFIX}&f Dùng /rules để biết luật chơi"popup-time: 30
+popup-duration: 5
+sendpopup-format: "&a{SENDER}&e>>&f {MESSAGE}"
+popup-broadcast-enabled: true
+popups:
+ - "§aUse §e/vote§a to get §bcool§f reward§6 ✉️"
+ - "§aWanna fly?§b Contact§e §fto buy §cVIP§6 ✉️"
+ - "§aDo /rules ✉️"
+...

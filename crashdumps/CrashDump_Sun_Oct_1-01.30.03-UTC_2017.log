@@ -1,0 +1,91 @@
+Tesseract Crash Dump Sun Oct 1 01:30:03 UTC 2017
+
+Error: syntax error, unexpected '$sender' (T_VARIABLE)
+File: /ThongTin_v1.phar/src/ThinkerS/Main
+Line: 48
+Type: notice
+
+THIS CRASH WAS CAUSED BY A PLUGIN
+
+Code:
+[39] 			   $sender->sendMessage("§a●§d Thêm người giúp việc vào plot bằng cách /p addhelper (tên người chơi, còn nếu muốn xóa thì /p removehelper (tên người chơi đã thêm).");
+[40] 			   $sender->sendMessage("§a●§e Các vật liệu xây dựng thì các bạn mua tại Shop nhé.");
+[41] 			   $sender->sendMessage("§c--------------------------§r");
+[42] 			   return true;
+[43] 			case "tuyendung":
+[44] 			   $sender->sendMessage("§r§c■§a☆§6♤ §aThông báo tuyển dụng -§b (ServerName)§e §6♤§a☆§c■");
+[45] 			   $sender->sendMessage("§a♢§ePolice§a♢§r");
+[46] 			   $sender->sendMessage("§a●§f Yêu cầu cần tuyển (Ghi Vào) Police.");
+[47] 			   $sender->sendMessage("§a- §fPolice cần phải trên (Ghi Vào) tuổi")
+[48] 			   $sender->sendMessage("§a- §fBiết cách quản member, mỗi ngày phải online liên tiếp suốt (Ghi vào) tiếng")
+[49] 			   $sender->sendMessage("§a- §fTrong 1 tháng phải vote hơn (Ghi Vào). Nếu không vote đủ sẽ bị cắt");
+[50] 			   $sender->sendMessage("§a- §fKhông troll member và tuân thủ đúng luật máy chủ");
+[51] 			   $sender->sendMessage("§a- §fLương in-game của Police là (Ghi Vào)  Xu.");
+[52] 			   $sender->sendMessage("§a♢§eHelper§a♢§r");
+[53] 			   $sender->sendMessage("§a●§f Yêu cầu cần tuyển (Ghi Vào) Helper.");
+[54] 			   $sender->sendMessage("§a-§f Helper cần phải trên (Ghi Vào) tuổi");
+[55] 			   $sender->sendMessage("§a-§f Biết nhiều lệnh và biết cách giúp member");
+[56] 			   $sender->sendMessage("§a-§f Mỗi ngày phải online xuyên suốt (Ghi Vào) tiếng");
+[57] 			   $sender->sendMessage("§a-§f Trong 1 tháng phải vote hơn (Ghi Vào) lần, nếu không vote đủ sẽ bị cắt");
+[58] 			   $sender->sendMessage("§a-§f Mức lương in-game của Helper là (Ghi Vào), Tuân thủ đúng luật server.");
+
+Backtrace:
+#0 (): spl_autoload_call(string ThinkerS\Main)
+#1 /src/pocketmine/plugin/PharPluginLoader(63): class_exists(string ThinkerS\Main, boolean 1)
+#2 /src/pocketmine/plugin/PluginManager(311): pocketmine\plugin\PharPluginLoader->loadPlugin(string phar:///storage/emulated/0/PocketMine/plugins/ThongTin_v1.phar)
+#3 /src/pocketmine/plugin/PluginManager(245): pocketmine\plugin\PluginManager->loadPlugin(string /storage/emulated/0/PocketMine/plugins/ThongTin_v1.phar, array Array())
+#4 /src/pocketmine/Server(503): pocketmine\plugin\PluginManager->loadPlugins(string /storage/emulated/0/PocketMine/plugins/)
+#5 /src/pocketmine/PocketMine(488): pocketmine\Server->__construct(BaseClassLoader object, pocketmine\utils\MainLogger object, string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/, string /storage/emulated/0/PocketMine/, string /storage/emulated/0/PocketMine/plugins/, string unknown)
+#6 (1): require_once(string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/src/pocketmine/PocketMine.php)
+
+Tesseract version: 0000000000000000000000000000000000000000 [Protocol 113; API 3.0.1]
+uname -a: Linux localhost 3.10.65-8631431 #2 SMP PREEMPT Fri Nov 18 13:31:37 KST 2016 armv7l
+PHP version: 7.0.3
+Zend version: 3.0.0
+OS : Linux, android
+
+Server uptime: 25 seconds
+Number of loaded worlds: 0
+Players online: 0/20
+
+Loaded plugins:
+ManyWorlds 2.1.0 by aliuly for API(s) 2.0.0
+FaceLogin 1.0.0 by Muqsit for API(s) 2.0.0, 3.0.0, 3.0.0-ALPHA4, 3.0.0-ALPHA5, 3.0.0-ALPHA6, 3.0.0-ALPHA67
+SimpleAuth 1.8.1 by PocketMine Team, shoghicp, awzaw for API(s) 2.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3, 3.0.0-ALPHA4, 3.0.0-ALPHA5
+EconomyAPI 2.0.9 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyAuction 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyCasino 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyJob 2.0.4 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyLand 2.0.9 by onebone for API(s) 1.12.0
+EconomyPShop 2.0.2 by onebone for API(s) 1.12.0
+EconomySell 2.0.7 by onebone for API(s) 1.12.0
+EconomyShop 2.0.7 by onebone for API(s) 1.12.0
+ItemCMD 1 by TonyDroidd for API(s) 1.12.0
+Bedwars 0.1 by EpicSteve33 for API(s) 1.15.0
+SClearLagg 1 by Sergey_Dertan for API(s) 1.8.0
+Broadcaster 1.16 by EvolSoft for API(s) 1.12.0
+EconomyTax 2.0.3 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyUsury 1.0.1 by onebone for API(s) 1.12.0
+AntiSpam 1.3 by xBeastMode for API(s) 2.0.0
+DevTools 1.11.0 by PocketMine Team for API(s) 3.0.0-ALPHA2
+Sell 2 by Muqsit, KairusDarkSeeker for API(s) 2.0.0
+Murder 0.3 [TG] by TheGrittlex for API(s) 3.0.0
+PurePerms 1.3.5 by 64FF00 for API(s) 1.13.0, 2.0.0
+MagicTelePortal 1.3.2 by aliuly for API(s) 1.10.0
+SimpleAuthHelper 2.0.1 by aliuly for API(s) 1.12.0
+StatusBoard_Planet 1 by ThaiEdit for API(s) 1.0.0, 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2
+ReportHacker 1.0.0 by applqpak for API(s) 1.0.0
+JoinItems 1 by MaxFreeze for API(s) 2.0.0
+FactionsPro 0.1#Beta by Array for API(s) 1.14.0, 2.0.0
+DailyReward 1.3 by MrDoni98 for API(s) 3.0.0, 3.0.0-ALPHA6
+AntiServerStop 1.1 by paetti for API(s) 1.0.0, 2.0.0, 3.0.0, 3.0.1, 3.1.0, 3.0.0-ALPHA1, 4.0.0, 5.0.0
+BackPackPE 2 by LordHippo for API(s) 2.0.0BETA
+BuyXP 1.0.0 by LordHippo for API(s) 1.0.0, 2.0.0, 3.0.0, 3.0.0-ALPHA5
+Fly 1.0.0 by iiInfinityHD for API(s) 2.0.0
+NapThe 4 by  for API(s) 3.0.0
+SETVIP 2.3 by MCPEVN TEAM for API(s) 3.0.0
+LuatStaff 1 by ThinkerS for API(s) 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3
+LuatChoi 1 by ThinkerS for API(s) 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3
+BangGia 0.5 by ThinkerS for API(s) 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3
+AdvancedKits 5.0b1 by luca28pet for API(s) 2.0.0
+Trade[PTK] 1 by PTK-KienPham for API(s) 2.0.0, 3.0.0

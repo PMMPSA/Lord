@@ -1,0 +1,8 @@
+---
+userName: ThinkerS
+group: Guest
+permissions:
+- pocketmine.command.op
+- pocketmine.command.deop
+worlds: []
+...

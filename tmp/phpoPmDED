@@ -1,0 +1,706 @@
+name: BattleKits
+main: battlekits\BattleKits
+version: 1.0.4
+author: Falkirks
+api: [1.0.0]
+load: POSTWORLD
+softdepend: ["EconomyAPI", "PocketMoney"]
+permissions:
+ battlekits:
+  default: op
+  children:
+   battlekits.use:
+    default: op
+   battlekits.listkits:
+    default: true
+   battlekits.sign:
+    default: op
+    children:
+     battlekits.sign.use:
+      default: true
+     battlekits.sign.create:
+      default: op
+<?php
+namespace battlekits;
+
+use battlekits\command\BattleKitCommand;
+use battlekits\economy\EconomyLoader;
+use battlekits\economy\BaseEconomy;
+use battlekits\kit\KitHistoryStore;
+use battlekits\kit\KitPaymentController;
+use battlekits\kit\KitStore;
+use battlekits\sign\SignListener;
+use pocketmine\plugin\PluginBase;
+
+class BattleKits extends PluginBase{
+    /** @var  EconomyLoader */
+    private $economyLoader;
+    /** @var  BaseEconomy */
+    private $economy = false;
+    /** @var  KitStore */
+    private $kitStore;
+    /** @var  KitPaymentController */
+    private $kitPaymentController;
+    /** @var  BattleKitCommand */
+    private $mainCommand;
+    /** @var  SignListener */
+    private $signListener;
+    /** @var  KitHistoryStore */
+    private $kitHistoryStore;
+    public function onEnable(){
+        $this->saveDefaultConfig();
+
+        $this->economyLoader = new EconomyLoader($this);
+        $this->economyLoader->load();
+
+        $this->kitStore = new KitStore($this);
+
+        $this->kitHistoryStore = new KitHistoryStore($this);
+
+        $this->kitPaymentController = new KitPaymentController($this);
+        
+        $this->mainCommand = new BattleKitCommand($this);
+        $this->getServer()->getCommandMap()->register("battlekits", $this->mainCommand);
+        
+        $this->signListener = new SignListener($this);
+    }
+
+    /**
+     * @param \battlekits\economy\BaseEconomy $economy
+     */
+    public function setEconomy(BaseEconomy $economy){
+        $this->economy = $economy;
+    }
+
+    /**
+     * @return \battlekits\economy\BaseEconomy
+     */
+    public function getEconomy(){
+        return $this->economy;
+    }
+    /**
+     * @return bool
+     */
+    public function isLinkedToEconomy(){
+        return $this->economy instanceof BaseEconomy;
+    }
+    /**
+     * @return \battlekits\kit\KitStore
+     */
+    public function getKitStore(){
+        return $this->kitStore;
+    }
+    /**
+     * @return \battlekits\command\BattleKitCommand
+     */
+    public function getMainCommand(){
+        return $this->mainCommand;
+    }
+    /**
+     * @return \battlekits\economy\EconomyLoader
+     */
+    public function getEconomyLoader(){
+        return $this->economyLoader;
+    }
+    /**
+     * @return \battlekits\sign\SignListener
+     */
+    public function getSignListener(){
+        return $this->signListener;
+    }
+
+    /**
+     * @return \battlekits\kit\KitPaymentController
+     */
+    public function getKitPaymentController(){
+        return $this->kitPaymentController;
+    }
+
+    /**
+     * @return \battlekits\kit\KitHistoryStore
+     */
+    public function getKitHistoryStore(){
+        return $this->kitHistoryStore;
+    }
+    public function reportEconomyLinkError(){
+        $this->getLogger()->critical("The link to " . $this->economy->getName() . " has been lost. Paid kits are no longer available.");
+        $this->economy = false;
+    }
+
+}
+#                                  )
+#     (           )   ) (       ( /(       )
+#   ( )\     ) ( /(( /( )\  (   )\())(  ( /(
+#   )((_) ( /( )\())\()|(_)))\|((_)\ )\ )\()|
+#  ((_)_  )(_)|_))(_))/ _ /((_)_ ((_|(_|_))/)\
+#   | _ )((_)_| |_| |_ | (_)) | |/ / (_) |_((_)
+#   | _ \/ _` |  _|  _|| / -_)  ' <  | |  _(_-<
+#   |___/\__,_|\__|\__||_\___| _|\_\ |_|\__/__/
+#
+# An clean port of BattleKits to PocketMine-MP
+once-per-life: true
+    # Whether or not players can only use kits once per life
+list-format: "%s: %s%s"
+    # Kit display format when listing kits
+    # If you don't understand it don't change it
+show-kit-info-on-respawn: true
+    # Whether or not kit information is shown on respawn
+    # NOT implemented yet
+econ-prefix: $
+    # Economy prefix for price display
+sign-trigger: "[BattleKits]"
+    # Signs will be treated as kit signs if this is on the first line
+    # Changing it may cause some issues
+preferred-economy: false
+    # If you have multiple economies set the one you want here, set to false to just auto-detect
+    # You can set an economy of your own provided that class loads before BattleKits
+    # battlekits\\economy\\Economy and battlekits\\economy\\PocketMoney are built in
+kits:
+  archer:
+    active-in: #Remove this setting for all worlds
+      - 'world'
+      - 'word_nether'
+      - 'word_end'
+    commands:  # Executed on kit give
+      - 'tell {player} Enjoy your kit :)'
+    on-give-message: "You're now an archer" #Message displayed when kit is delivered
+    items:
+      helmet: '298'
+      chestplate: '299'
+      leggings: '300'
+      boots: '301'
+      '0': '261'
+      '1': '282'
+      '2': '282'
+      '3': '282'
+      '4': '282'
+      '5': '282'
+      '6': '282'
+      '7': '282'
+      '8': '282'
+      '9': '0'
+      '10': '0'
+      '11': '0'
+      '12': '0'
+      '13': '0'
+      '14': '0'
+      '15': '0'
+      '16': '262:64'
+      '17': '262:64'
+      '18': '0'
+      '19': '0'
+      '20': '0'
+      '21': '0'
+      '22': '0'
+      '23': '0'
+      '24': '0'
+      '25': '0'
+      '26': '0'
+      '27': '282'
+      '28': '282'
+      '29': '282'
+      '30': '282'
+      '31': '282'
+      '32': '282'
+      '33': '282'
+      '34': '282'
+      '35': '282'
+<?php
+namespace battlekits\economy;
+
+use battlekits\BattleKits;
+
+class EconomyLoader{
+    private $plugin;
+    public function __construct(BattleKits $plugin){
+        $this->plugin = $plugin;
+    }
+    public function load(){
+        if($this->plugin->getConfig()->get('preferred-economy') !== false){
+            $name = $this->plugin->getConfig()->get('preferred-economy');
+            try{
+                $econ = new $name($this->plugin);
+                if($econ instanceof BaseEconomy){
+                    if($econ->isReady()){
+                        $this->plugin->setEconomy($econ);
+                        $this->plugin->getLogger()->info("Loaded " . $econ->getName());
+                    }
+                    else{
+                        $this->plugin->getLogger()->critical("The preferred-economy you specified is not loaded.");
+                    }
+                }
+            }
+            catch(\ClassNotFoundException $e){
+                $this->plugin->getLogger()->critical("The preferred-economy you specified is not supported.");
+            }
+        }
+        else{
+            /*
+             * Try loading EconomyS
+             */
+            $econ = new Economy($this->plugin);
+            if($econ->isReady()){
+                $this->plugin->setEconomy($econ);
+                $this->plugin->getLogger()->info("Loaded " . $econ->getName());
+                return;
+            }
+            /*
+             * Try loading PocketMoney
+             */
+            $econ = new PocketMoney($this->plugin);
+            if($econ->isReady()){
+                $this->plugin->setEconomy($econ);
+                $this->plugin->getLogger()->info("Loaded " . $econ->getName());
+                return;
+            }
+            $this->plugin->getLogger()->critical("No economy found, an economy is not required but certain features will be unavailable.");
+        }
+    }
+}
+<?php
+namespace battlekits\economy;
+
+use pocketmine\Player;
+use pocketmine\plugin\PluginBase;
+
+class Economy extends BaseEconomy{
+    public function give($amt, Player $player){
+        if(!$this->checkReady()) return false;
+        return ($this->getAPI()->addMoney($player, $amt) === 1);
+    }
+    public function take($amt, Player $player){
+        if(!$this->checkReady()) return false;
+        return ($this->getAPI()->reduceMoney($player, $amt) === 1);
+    }
+    public function setBal($amt, Player $player){
+        if(!$this->checkReady()) return false;
+        return ($this->getAPI()->setMoney($player, $amt) === 1);
+    }
+    public function getAPI(){
+        return $this->getPlugin()->getServer()->getPluginManager()->getPlugin("EconomyAPI");
+    }
+    public function isReady(){
+        return ($this->getAPI() instanceof PluginBase);
+    }
+    public function getName(){
+        return "EconomyS by onebone";
+    }
+}<?php
+namespace battlekits\economy;
+
+use battlekits\BattleKits;
+use pocketmine\Player;
+
+abstract class BaseEconomy{
+    private $plugin;
+    public function __construct(BattleKits $main){
+        $this->plugin = $main;
+    }
+    public function getPlugin(){
+        return $this->plugin;
+    }
+    public abstract function give($amt, Player $player);
+    public abstract function take($amt, Player $player);
+    public abstract function setBal($amt, Player $player);
+    public abstract function getAPI();
+    public abstract function isReady();
+    public abstract function getName();
+    public function checkReady(){
+        if(!$this->isReady()){
+            $this->getPlugin()->reportEconomyLinkError();
+            return false;
+        }
+        return true;
+    }
+}<?php
+namespace battlekits\kit;
+
+use battlekits\BattleKits;
+use pocketmine\event\Listener;
+use pocketmine\permission\Permission;
+
+class KitStore implements Listener{
+    /** @var BattleKits*/
+    private $plugin;
+    /** @var  Kit[] */
+    private $kits;
+    public function __construct(BattleKits $plugin){
+        $this->plugin = $plugin;
+        foreach($this->getPlugin()->getConfig()->get('kits') as $name => $kitData){
+            $perm = new Permission("battlekits.use.$name", "Apply $name kit");
+            $this->getPlugin()->getServer()->getPluginManager()->addPermission($perm);
+            $perm->addParent("battlekits.use", true);
+            $this->kits[$name] = new Kit($kitData, $this->getPlugin());
+        }
+        $this->getPlugin()->getLogger()->info("Loaded " . count($this->kits) . " kits.");
+    }
+    /**
+     * @return \battlekits\kit\Kit[]
+     */
+    public function getKits(){
+        return $this->kits;
+    }
+    /**
+     * @return \battlekits\BattleKits
+     */
+    public function getPlugin(){
+        return $this->plugin;
+    }
+    /**
+     * @param $name
+     * @return bool
+     */
+    public function kitExists($name){
+        return isset($this->kits[$name]);
+    }
+
+    /**
+     * @param $name
+     * @return Kit|bool
+     */
+    public function getKit($name){
+        if($this->kitExists($name)){
+            return $this->kits[$name];
+        }
+        else{
+            return false;
+        }
+    }
+}<?php
+namespace battlekits\kit;
+
+use battlekits\BattleKits;
+use pocketmine\command\ConsoleCommandSender;
+use pocketmine\item\Item;
+use pocketmine\level\Level;
+use pocketmine\Player;
+
+class Kit{
+    private $plugin;
+    private $activeIn;
+    private $commands;
+    private $onGiveMessage;
+    private $cost;
+    /** @var Item[] */
+    private $items;
+    public function __construct($kitData, BattleKits $plugin){
+        $this->plugin = $plugin;
+        if(isset($kitData['active-in'])){
+            $this->activeIn = $kitData['active-in'];
+        }
+        else{
+            $this->activeIn = false;
+        }
+        if(isset($kitData['commands'])){
+            $this->commands = $kitData['commands'];
+        }
+        else{
+            $this->commands = [];
+        }
+        if(isset($kitData['on-give-message'])){
+            $this->onGiveMessage = $kitData['on-give-message'];
+        }
+        else{
+            $this->onGiveMessage = false;
+        }
+        if(isset($kitData['cost'])){
+            $this->cost = $kitData['cost'];
+        }
+        else{
+            $this->cost = false;
+        }
+        if(isset($kitData['items']) && count($kitData['items']) > 0){
+            $this->items = [];
+            foreach($kitData['items'] as $slotId => $itemStr){
+                if(strpos($itemStr, ":") !== false){
+                    $itemArr = explode(":", $itemStr);
+                    if(count($itemArr) == 2 && is_numeric($itemArr[0]) && is_numeric($itemArr[1])){
+                        $this->items[$slotId] = Item::get($itemArr[0], 0, $itemArr[1]);
+                    }
+                    else{
+                        $this->getPlugin()->getLogger("Skipping item $itemStr due to not an item");
+                    }
+                }
+                else{
+                    if(is_numeric($itemStr)){
+                        $this->items[$slotId] = Item::get($itemStr);
+                    }
+                    else{
+                        $this->getPlugin()->getLogger("Skipping item $itemStr due to not an item");
+                    }
+                }
+            }
+        }
+        else{
+            $this->getPlugin()->getLogger()->info("You have a kit without any items, seems useless.");
+            $this->items = [];
+        }
+    }
+    public function applyTo(Player $p){
+        $inventory = $p->getInventory()->getContents();
+        $size = $p->getInventory()->getSize();
+        foreach($this->items as $id => $item){
+            if(!is_numeric($id)){
+                switch($id){
+                    case 'helmet':
+                        $id = $size;
+                        break;
+                    case 'chestplate':
+                        $id = $size + 1;
+                        break;
+                    case 'leggings':
+                        $id = $size + 2;
+                        break;
+                    case 'boots':
+                        $id = $size + 3;
+                        break;
+                }
+            }
+            $inventory[$id] = $item;
+        }
+        $p->getInventory()->setContents($inventory);
+        $p->getInventory()->sendArmorContents([$p]);
+        foreach($this->commands as $command){
+            $command = str_replace("{player}", $p->getName(), $command);
+            $this->getPlugin()->getServer()->dispatchCommand(new ConsoleCommandSender(), $command);
+        }
+        if($this->onGiveMessage !== false){
+            $p->sendMessage($this->onGiveMessage);
+        }
+    }
+    public function getCommands(){
+        return $this->commands;
+    }
+    public function isCommandKit(){
+        return count($this->commands) > 0;
+    }
+    public function isActiveIn(Level $level){
+        if($this->activeIn === false){
+            return true;
+        }
+        else{
+            return in_array($level->getName(), $this->activeIn);
+        }
+    }
+    public function getActiveIn(){
+        return $this->activeIn;
+    }
+    public function getCost(){
+        return $this->cost;
+    }
+    public function isFree(){
+        return $this->getCost() == false; //If cost is 0 then the package is free as well
+    }
+    public function getItems(){
+        return $this->items;
+    }
+    public function getOnGiveMessage(){
+        return $this->onGiveMessage;
+    }
+    public function getPlugin(){
+        return $this->plugin;
+    }
+}<?php
+namespace battlekits\kit;
+
+use battlekits\BattleKits;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerRespawnEvent;
+use pocketmine\Player;
+
+class KitHistoryStore implements Listener{
+    /** @var  BattleKits */
+    private $plugin;
+    private $players;
+    public function __construct(BattleKits $plugin){
+        $this->plugin = $plugin;
+        $this->players = [];
+        $this->getPlugin()->getServer()->getPluginManager()->registerEvents($this, $this->getPlugin());
+    }
+    public function kitUsed(Player $p){
+        $this->players[$p->getName()] = true;
+    }
+    public function canUse(Player $p){
+        return (!isset($this->players[$p->getName()]) || $this->getPlugin()->getConfig()->get('once-per-life') === false);
+    }
+    public function onPlayerRespawn(PlayerRespawnEvent $event){
+        //TODO send kit info
+        if(isset($this->players[$event->getPlayer()->getName()])){
+            unset($this->players[$event->getPlayer()->getName()]);
+        }
+    }
+    /**
+     * @return \battlekits\BattleKits
+     */
+    public function getPlugin(){
+        return $this->plugin;
+    }
+}<?php
+namespace battlekits\kit;
+
+use battlekits\BattleKits;
+use pocketmine\Player;
+class KitPaymentController{
+    /** @var  BattleKits */
+    private $plugin;
+    public function __construct(BattleKits $plugin){
+        $this->plugin = $plugin;
+    }
+    public function grantKit($name, Player $player){
+        $kit = $this->getPlugin()->getKitStore()->getKit($name);
+        if($kit !== false){
+            if($player->hasPermission("battlekits.use.$name")){
+                if($kit->isActiveIn($player->getLevel())){
+                    if($this->getPlugin()->getKitHistoryStore()->canUse($player)){
+                        if(!$kit->isFree()){
+                            if($this->getPlugin()->isLinkedToEconomy()){
+                                if($this->getPlugin()->getEconomy()->take($kit->getCost(), $player)){
+                                    $kit->applyTo($player);
+                                    $this->getPlugin()->getKitHistoryStore()->kitUsed($player);
+                                    return true;
+                                }
+                                else{
+                                    $player->sendMessage("$name can't be purchased.");
+                                    return false;
+                                }
+                            }
+                            else{
+                                $player->sendMessage("$name can't be purchased at this time.");
+                                return false;
+                            }
+                        }
+                        else{
+                            $kit->applyTo($player);
+                            $this->getPlugin()->getKitHistoryStore()->kitUsed($player);
+                            return true;
+                        }
+                    }
+                    else{
+                        $player->sendMessage("You can only use one kit per life.");
+                        return false;
+                    }
+                }
+                else{
+                    $player->sendMessage("$name is not available in this world.");
+                    return false;
+                }
+            }
+            else{
+                $player->sendMessage("You don't have permission to use $name.");
+                return false;
+            }
+        }
+        else{
+            $player->sendMessage("$name doesn't exist.");
+            return false;
+        }
+    }
+    /**
+     * @return \battlekits\BattleKits
+     */
+    public function getPlugin(){
+        return $this->plugin;
+    }
+}
+<?php
+namespace battlekits\command;
+
+use battlekits\BattleKits;
+use pocketmine\command\Command;
+use pocketmine\command\CommandSender;
+use pocketmine\command\PluginIdentifiableCommand;
+use pocketmine\Player;
+
+class BattleKitCommand extends Command implements PluginIdentifiableCommand{
+    private $main;
+    public function __construct(BattleKits $main){
+        parent::__construct("battlekits", "Get your kits.", "/kit [name]", ["bk", "kit"]);
+        $this->main = $main;
+    }
+    public function execute(CommandSender $sender, $label, array $args){
+        if(isset($args[0])){
+            if($sender instanceof Player){
+                $this->getPlugin()->getKitPaymentController()->grantKit($args[0], $sender);
+            }
+            else{
+                $sender->sendMessage("Please run command in game.");
+            }
+        }
+        else{
+            if($sender->hasPermission("battlekits.listkits")){
+                $count = 0;
+                foreach($this->getPlugin()->getKitStore()->getKits() as $name => $kit){
+                    if($kit->isFree() || $this->getPlugin()->isLinkedToEconomy()){
+                        if($sender instanceof Player){
+                            if($kit->isActiveIn($sender->getLevel())){
+                                $sender->sendMessage(sprintf($this->getPlugin()->getConfig()->get('list-format'), $name, $this->getPlugin()->getConfig()->get('econ-prefix'), ($kit->isFree() ? "0" : $kit->getCost())));
+                                $count++;
+                            }
+                        }
+                        else{
+                            $sender->sendMessage("$name: " . $this->getPlugin()->getConfig()->get('econ-prefix') . ($kit->isFree() ? "0" : $kit->getCost()));
+                            $count++;
+                        }
+                    }
+                }
+                $sender->sendMessage("Listed $count of " . count($this->getPlugin()->getKitStore()->getKits()));
+            }
+        }
+    }
+    public function getPlugin(){
+        return $this->main;
+    }
+}<?php
+namespace battlekits\sign;
+
+use battlekits\BattleKits;
+use pocketmine\event\block\SignChangeEvent;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerInteractEvent;
+use pocketmine\tile\Sign;
+
+class SignListener implements Listener{
+    /** @var BattleKits  */
+    private $plugin;
+    public function __construct(BattleKits $plugin){
+        $this->plugin = $plugin;
+        $this->getPlugin()->getServer()->getPluginManager()->registerEvents($this, $this->getPlugin());
+    }
+    public function onSignChange(SignChangeEvent $event){
+        if($event->getLine(0) === $this->getPlugin()->getConfig()->get('sign-trigger')){
+            if($event->getPlayer()->hasPermission("battlekits.sign.create")){
+                if(!empty($event->getLine(1))){
+                    $event->getPlayer()->sendMessage("You have successfully created kit sign.");
+                }
+                else{
+                    $event->getPlayer()->sendMessage("You must set a kit.");
+                    $event->setCancelled();
+                }
+            }
+            else{
+                $event->getPlayer()->sendMessage("You don't have permission to make kit signs.");
+                $event->setCancelled();
+            }
+        }
+    }
+    public function onInteract(PlayerInteractEvent $event){
+        $sign = $event->getPlayer()->getLevel()->getTile($event->getBlock());
+        if($sign instanceof Sign){
+            $text = $sign->getText();
+            if($text[0] === $this->getPlugin()->getConfig()->get('sign-trigger') && !empty($text[1])){
+                if($event->getPlayer()->hasPermission("battlekits.sign.use")){
+                    $this->getPlugin()->getKitPaymentController()->grantKit($text[1], $event->getPlayer());
+                }
+                else{
+                    $event->getPlayer()->sendMessage("You don't have permission to use kit signs.");
+                }
+            }
+        }
+    }
+    /**
+     * @return \battlekits\BattleKits
+     */
+    public function getPlugin(){
+        return $this->plugin;
+    }
+}

@@ -1,0 +1,87 @@
+Tesseract Crash Dump Wed Sep 13 10:51:19 UTC 2017
+
+Error: syntax error, unexpected ')'
+File: /RulesStaff_v1.phar/src/ThinkerS/RulesStaff
+Line: 13
+Type: notice
+
+THIS CRASH WAS CAUSED BY A PLUGIN
+
+Code:
+[4] use pocketmine\Server;
+[5] use pocketmine\command\Command;
+[6] use pocketmine\command\CommandSender;
+[7] use pocketmine\plugin\PluginBase;
+[8] use pocketmine\utils\Config;
+[9] use pocketmine\utils\TextFormat;
+[10] 
+[11] class RulesStaff extends PluginBase{
+[12] 	public function onEnable(){
+[13] 		@mkdir($this->getDataFolder() ."config.yml")){
+[14] 
+[15] 			if(!file_exists($this->getDataFolder() ."config.yml")){
+[16] 			file_put_contents($this->getDataFolder() ."config.yml",yaml_emit(array()));
+[17] 		}
+[18] 		$this->config = new Config($this->getDataFolder() . "config.yml", Config::YAML, [
+[19] 				"Luật-1" => "Luật",
+[20] 				"Luật-2" => "Luật",
+[21] 				"Luật-3" => "Luật",
+[22] 				"Luật-4" => "Luật",
+[23] 				"Luật-5" => "Luật",
+
+Backtrace:
+#0 (): spl_autoload_call(string ThinkerS\RulesStaff)
+#1 /src/pocketmine/plugin/PharPluginLoader(63): class_exists(string ThinkerS\RulesStaff, boolean 1)
+#2 /src/pocketmine/plugin/PluginManager(311): pocketmine\plugin\PharPluginLoader->loadPlugin(string phar:///storage/emulated/0/PocketMine/plugins/RulesStaff_v1.phar)
+#3 /src/pocketmine/plugin/PluginManager(245): pocketmine\plugin\PluginManager->loadPlugin(string /storage/emulated/0/PocketMine/plugins/RulesStaff_v1.phar, array Array())
+#4 /src/pocketmine/Server(503): pocketmine\plugin\PluginManager->loadPlugins(string /storage/emulated/0/PocketMine/plugins/)
+#5 /src/pocketmine/PocketMine(488): pocketmine\Server->__construct(BaseClassLoader object, pocketmine\utils\MainLogger object, string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/, string /storage/emulated/0/PocketMine/, string /storage/emulated/0/PocketMine/plugins/, string unknown)
+#6 (1): require_once(string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/src/pocketmine/PocketMine.php)
+
+Tesseract version: 0000000000000000000000000000000000000000 [Protocol 113; API 3.0.1]
+uname -a: Linux localhost 3.10.65-8631431 #2 SMP PREEMPT Fri Nov 18 13:31:37 KST 2016 armv7l
+PHP version: 7.0.3
+Zend version: 3.0.0
+OS : Linux, android
+
+Server uptime: 26 seconds
+Number of loaded worlds: 0
+Players online: 0/20
+
+Loaded plugins:
+ManyWorlds 2.1.0 by aliuly for API(s) 2.0.0
+FaceLogin 1.0.0 by Muqsit for API(s) 2.0.0, 3.0.0, 3.0.0-ALPHA4, 3.0.0-ALPHA5, 3.0.0-ALPHA6, 3.0.0-ALPHA67
+SimpleAuth 1.8.1 by PocketMine Team, shoghicp, awzaw for API(s) 2.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3, 3.0.0-ALPHA4, 3.0.0-ALPHA5
+EconomyAPI 2.0.9 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyAuction 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyCasino 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyJob 2.0.4 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyLand 2.0.9 by onebone for API(s) 1.12.0
+EconomyPShop 2.0.2 by onebone for API(s) 1.12.0
+EconomySell 2.0.7 by onebone for API(s) 1.12.0
+EconomyShop 2.0.7 by onebone for API(s) 1.12.0
+ItemCMD 1 by TonyDroidd for API(s) 1.12.0
+Bedwars 0.1 by EpicSteve33 for API(s) 1.15.0
+SClearLagg 1 by Sergey_Dertan for API(s) 1.8.0
+Broadcaster 1.16 by EvolSoft for API(s) 1.12.0
+EconomyTax 2.0.3 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyUsury 1.0.1 by onebone for API(s) 1.12.0
+AntiSpam 1.3 by xBeastMode for API(s) 2.0.0
+DevTools 1.11.0 by PocketMine Team for API(s) 3.0.0-ALPHA2
+Sell 2 by Muqsit, KairusDarkSeeker for API(s) 2.0.0
+Murder 0.3 [TG] by TheGrittlex for API(s) 3.0.0
+PurePerms 1.3.5 by 64FF00 for API(s) 1.13.0, 2.0.0
+MagicTelePortal 1.3.2 by aliuly for API(s) 1.10.0
+SimpleAuthHelper 2.0.1 by aliuly for API(s) 1.12.0
+StatusBoard_Planet 1 by ThaiEdit for API(s) 1.0.0, 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2
+ReportHacker 1.0.0 by applqpak for API(s) 1.0.0
+JoinItems 1 by MaxFreeze for API(s) 2.0.0
+FactionsPro 0.1#Beta by Array for API(s) 1.14.0, 2.0.0
+DailyReward 1.3 by MrDoni98 for API(s) 3.0.0, 3.0.0-ALPHA6
+AntiServerStop 1.1 by paetti for API(s) 1.0.0, 2.0.0, 3.0.0, 3.0.1, 3.1.0, 3.0.0-ALPHA1, 4.0.0, 5.0.0
+BackPackPE 2 by LordHippo for API(s) 2.0.0BETA
+BuyXP 1.0.0 by LordHippo for API(s) 1.0.0, 2.0.0, 3.0.0, 3.0.0-ALPHA5
+Fly 1.0.0 by iiInfinityHD for API(s) 2.0.0
+NapThe 4 by  for API(s) 3.0.0
+SETVIP 2.3 by MCPEVN TEAM for API(s) 3.0.0
+BangGia 1 by XFizzer for API(s) 2.0.0, 2.1.0, 3.0.0, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3

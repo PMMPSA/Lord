@@ -1,0 +1,69 @@
+GenisysPro Crash Dump Sun Aug 20 01:44:45 UTC 2017
+
+Error: syntax error, unexpected ')'
+File: /EggWars_v1.phar/src/Driesboy/EggWars/EggWars
+Line: 221
+Type: notice
+
+THIS CRASH WAS CAUSED BY A PLUGIN
+
+Code:
+[212]   }
+[213] 
+[214]   public function ArenaCreate($arena, $team, $tbo, Player $p){
+[215]     if(!$this->ArenaControl($arena)){
+[216]       if($team <= 8) {
+[217]         if($tbo <= 8) {
+[218]           $ac = new Config($this->getDataFolder() . "Arenas/$arena.yml", Config::YAML);
+[219]           $cfg = new Config($this->getDataFolder() . "config.yml", Config::YAML);
+[220]           $this->status[$arena] = "Lobby";
+[221]           $this->StartTime[$arena] = (int) $cfg->get("StartTime"));
+[222]           $this->EndTime[$arena] = (int) $cfg->get("EndTime"));
+[223]           $ac->set("Team", (int) $team);
+[224]           $ac->set("PlayersPerTeam", (int) $tbo);
+[225]           $ac->save();
+[226]           $this->players[$arena] = array();
+[227]           $p->sendMessage($this->sb."§a$arena was successfully built!");
+[228]         }else{
+[229]           $p->sendMessage("§8» §cThe number of players per team should be 8 or less.");
+[230]         }
+[231]       }else{
+
+Backtrace:
+#0 (): spl_autoload_call(string Driesboy\EggWars\EggWars)
+#1 /src/pocketmine/plugin/PharPluginLoader(63): class_exists(string Driesboy\EggWars\EggWars, boolean 1)
+#2 /src/pocketmine/plugin/PluginManager(159): pocketmine\plugin\PharPluginLoader->loadPlugin(string phar:///storage/emulated/0/PocketMine/plugins/EggWars_v1.phar)
+#3 /src/pocketmine/plugin/PluginManager(346): pocketmine\plugin\PluginManager->loadPlugin(string /storage/emulated/0/PocketMine/plugins/EggWars_v1.phar, array Array())
+#4 /src/pocketmine/Server(1830): pocketmine\plugin\PluginManager->loadPlugins(string /storage/emulated/0/PocketMine/plugins/)
+#5 /src/pocketmine/PocketMine(470): pocketmine\Server->__construct(BaseClassLoader object, pocketmine\utils\MainLogger object, string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/, string /storage/emulated/0/PocketMine/, string /storage/emulated/0/PocketMine/plugins/)
+#6 (1): require_once(string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/src/pocketmine/PocketMine.php)
+
+Genisys version: 0000000000000000000000000000000000000000 [Protocol 113; API 3.0.1]
+uname -a: Linux localhost 3.10.65-8631431 #2 SMP PREEMPT Fri Nov 18 13:31:37 KST 2016 armv7l
+PHP version: 7.0.3
+Zend version: 3.0.0
+OS : Linux, android
+
+Server uptime: 8 seconds
+Number of loaded worlds: 0
+Players online: 0/20
+
+Loaded plugins:
+ManyWorlds 2.1.0 by aliuly for API(s) 2.0.0
+FaceLogin 1.0.0 by Muqsit for API(s) 2.0.0, 3.0.0, 3.0.0-ALPHA4, 3.0.0-ALPHA5, 3.0.0-ALPHA6, 3.0.0-ALPHA67
+SimpleAuth 1.7.1 by PocketMine Team, shoghicp for API(s) 1.12.0
+EconomyAPI 2.0.9 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyAuction 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyCasino 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyJob 2.0.4 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyLand 2.0.9 by onebone for API(s) 1.12.0
+EconomyPShop 2.0.2 by onebone for API(s) 1.12.0
+EconomySell 2.0.7 by onebone for API(s) 1.12.0
+EconomyShop 2.0.7 by onebone for API(s) 1.12.0
+xRulesx 1.0.0 by xFlare for API(s) 1.8.0
+SW_svile 0.6dev by svile for API(s) 2.0.0, 3.0.1, 3.0.0-ALPHA1, 3.0.0-ALPHA2, 3.0.0-ALPHA3, 3.0.0-ALPHA4, 3.0.0-ALPHA5, 3.0.0-ALPHA6, 3.0.0-ALPHA7
+SClearLagg 1 by Sergey_Dertan for API(s) 1.8.0
+Broadcaster 1.16 by EvolSoft for API(s) 1.12.0
+EconomyTax 2.0.3 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+MSpawns 1.5 by EvolSoft for API(s) 1.11.0
+EconomyUsury 1.0.1 by onebone for API(s) 1.12.0

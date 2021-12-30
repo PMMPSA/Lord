@@ -1,0 +1,1957 @@
+<?php
+
+/*
+ *
+ *  ____            _        _   __  __ _                  __  __ ____
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
+ * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
+ * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
+ * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author PocketMine Team
+ * @link http://www.pocketmine.net/
+ *
+ *
+*/
+
+namespace {
+	function safe_var_dump(){
+		static $cnt = 0;
+		foreach(func_get_args() as $var){
+			switch(true){
+				case is_array($var):
+					echo str_repeat("  ", $cnt) . "array(" . count($var) . ") {" . PHP_EOL;
+					foreach($var as $key => $value){
+						echo str_repeat("  ", $cnt + 1) . "[" . (is_integer($key) ? $key : '"' . $key . '"') . "]=>" . PHP_EOL;
+						++$cnt;
+						safe_var_dump($value);
+						--$cnt;
+					}
+					echo str_repeat("  ", $cnt) . "}" . PHP_EOL;
+					break;
+				case is_int($var):
+					echo str_repeat("  ", $cnt) . "int(" . $var . ")" . PHP_EOL;
+					break;
+				case is_float($var):
+					echo str_repeat("  ", $cnt) . "float(" . $var . ")" . PHP_EOL;
+					break;
+				case is_bool($var):
+					echo str_repeat("  ", $cnt) . "bool(" . ($var === true ? "true" : "false") . ")" . PHP_EOL;
+					break;
+				case is_string($var):
+					echo str_repeat("  ", $cnt) . "string(" . strlen($var) . ") \"$var\"" . PHP_EOL;
+					break;
+				case is_resource($var):
+					echo str_repeat("  ", $cnt) . "resource() of type (" . get_resource_type($var) . ")" . PHP_EOL;
+					break;
+				case is_object($var):
+					echo str_repeat("  ", $cnt) . "object(" . get_class($var) . ")" . PHP_EOL;
+					break;
+				case is_null($var):
+					echo str_repeat("  ", $cnt) . "NULL" . PHP_EOL;
+					break;
+			}
+		}
+	}
+
+	function dummy(){
+
+	}
+}
+
+namespace pocketmine {
+
+	use pocketmine\utils\Binary;
+	use pocketmine\utils\MainLogger;
+
+	use pocketmine\utils\Terminal;
+	use pocketmine\utils\Utils;
+	use pocketmine\wizard\Installer;
+
+	const VERSION = "1.2.0";
+	const API_VERSION = "3.0.1";
+	const CODENAME = "Ruby";
+
+	/*
+	 * Startup code. Do not look at it, it may harm you.
+	 * Most of them are hacks to fix date-related bugs, or basic functions used after this
+	 * This is the only non-class based file on this project.
+	 * Enjoy it as much as I did writing it. I don't want to do it again.
+	 */
+
+	if(\Phar::running(true) !== ""){
+		@define('pocketmine\PATH', \Phar::running(true) . "/");
+	}else{
+		@define('pocketmine\PATH', \getcwd() . DIRECTORY_SEPARATOR);
+	}
+
+	if(version_compare("7.0", PHP_VERSION) > 0){
+		echo "[CRITICAL] You must use PHP >= 7.0" . PHP_EOL;
+		echo "[CRITICAL] Please use the installer provided on the homepage." . PHP_EOL;
+		exit(1);
+	}
+
+	if(!extension_loaded("pthreads")){
+		echo "[CRITICAL] Unable to find the pthreads extension." . PHP_EOL;
+		echo "[CRITICAL] Please use the installer provided on the homepage." . PHP_EOL;
+		exit(1);
+	}
+
+	if(!class_exists("ClassLoader", false)){
+		require_once(\pocketmine\PATH . "src/spl/ClassLoader.php");
+		require_once(\pocketmine\PATH . "src/spl/BaseClassLoader.php");
+	}
+
+	$autoloader = new \BaseClassLoader();
+	$autoloader->addPath(\pocketmine\PATH . "src");
+	$autoloader->addPath(\pocketmine\PATH . "src" . DIRECTORY_SEPARATOR . "spl");
+	$autoloader->register(true);
+
+
+	set_time_limit(0);
+
+	gc_enable();
+	error_reporting(-1);
+	ini_set("allow_url_fopen", 1);
+	ini_set("display_errors", 1);
+	ini_set("display_startup_errors", 1);
+	ini_set("default_charset", "utf-8");
+
+	ini_set("memory_limit", -1);
+	define('pocketmine\START_TIME', microtime(true));
+
+	$opts = getopt("", ["data:", "plugins:", "no-wizard", "enable-profiler"]);
+
+	define('pocketmine\DATA', isset($opts["data"]) ? $opts["data"] . DIRECTORY_SEPARATOR : \getcwd() . DIRECTORY_SEPARATOR);
+	define('pocketmine\PLUGIN_PATH', isset($opts["plugins"]) ? $opts["plugins"] . DIRECTORY_SEPARATOR : \getcwd() . DIRECTORY_SEPARATOR . "plugins" . DIRECTORY_SEPARATOR);
+
+	Terminal::init();
+
+	define('pocketmine\ANSI', Terminal::hasFormattingCodes());
+
+	if(!file_exists(\pocketmine\DATA)){
+		mkdir(\pocketmine\DATA, 0777, true);
+	}
+
+	//Logger has a dependency on timezone, so we'll set it to UTC until we can get the actual timezone.
+	date_default_timezone_set("UTC");
+
+	$logger = new MainLogger(\pocketmine\DATA . "server.log", \pocketmine\ANSI);
+
+	if(!ini_get("date.timezone")){
+		if(($timezone = detect_system_timezone()) and date_default_timezone_set($timezone)){
+			//Success! Timezone has already been set and validated in the if statement.
+			//This here is just for redundancy just in case some program wants to read timezone data from the ini.
+			ini_set("date.timezone", $timezone);
+		}else{
+			//If system timezone detection fails or timezone is an invalid value.
+			if($response = Utils::getURL("http://ip-api.com/json")
+				and $ip_geolocation_data = json_decode($response, true)
+				and $ip_geolocation_data['status'] !== 'fail'
+				and date_default_timezone_set($ip_geolocation_data['timezone'])
+			){
+				//Again, for redundancy.
+				ini_set("date.timezone", $ip_geolocation_data['timezone']);
+			}else{
+				ini_set("date.timezone", "UTC");
+				date_default_timezone_set("UTC");
+				$logger->warning("Timezone could not be automatically determined. An incorrect timezone will result in incorrect timestamps on console logs. It has been set to \"UTC\" by default. You can change it on the php.ini file.");
+			}
+		}
+	}else{
+		/*
+		 * This is here so that people don't come to us complaining and fill up the issue tracker when they put
+		 * an incorrect timezone abbreviation in php.ini apparently.
+		 */
+		$timezone = ini_get("date.timezone");
+		if(strpos($timezone, "/") === false){
+			$default_timezone = timezone_name_from_abbr($timezone);
+			ini_set("date.timezone", $default_timezone);
+			date_default_timezone_set($default_timezone);
+		}else{
+			date_default_timezone_set($timezone);
+		}
+	}
+
+	/**
+	 * @return bool|string
+	 */
+	function detect_system_timezone(){
+		switch(Utils::getOS()){
+			case 'win':
+				$regex = '/(UTC)(\+*\-*\d*\d*\:*\d*\d*)/';
+
+				/*
+				 * wmic timezone get Caption
+				 * Get the timezone offset
+				 *
+				 * Sample Output var_dump
+				 * array(3) {
+				 *	  [0] =>
+				 *	  string(7) "Caption"
+				 *	  [1] =>
+				 *	  string(20) "(UTC+09:30) Adelaide"
+				 *	  [2] =>
+				 *	  string(0) ""
+				 *	}
+				 */
+				exec("wmic timezone get Caption", $output);
+
+				$string = trim(implode("\n", $output));
+
+				//Detect the Time Zone string
+				preg_match($regex, $string, $matches);
+
+				if(!isset($matches[2])){
+					return false;
+				}
+
+				$offset = $matches[2];
+
+				if($offset == ""){
+					return "UTC";
+				}
+
+				return parse_offset($offset);
+				break;
+			case 'linux':
+				// Ubuntu / Debian.
+				if(file_exists('/etc/timezone')){
+					$data = file_get_contents('/etc/timezone');
+					if($data){
+						return trim($data);
+					}
+				}
+
+				// RHEL / CentOS
+				if(file_exists('/etc/sysconfig/clock')){
+					$data = parse_ini_file('/etc/sysconfig/clock');
+					if(!empty($data['ZONE'])){
+						return trim($data['ZONE']);
+					}
+				}
+
+				//Portable method for incompatible linux distributions.
+
+				$offset = trim(exec('date +%:z'));
+
+				if($offset == "+00:00"){
+					return "UTC";
+				}
+
+				return parse_offset($offset);
+				break;
+			case 'mac':
+				if(is_link('/etc/localtime')){
+					$filename = readlink('/etc/localtime');
+					if(strpos($filename, '/usr/share/zoneinfo/') === 0){
+						$timezone = substr($filename, 20);
+
+						return trim($timezone);
+					}
+				}
+
+				return false;
+				break;
+			default:
+				return false;
+				break;
+		}
+	}
+
+	/**
+	 * @param string $offset In the format of +09:00, +02:00, -04:00 etc.
+	 *
+	 * @return string
+	 */
+	function parse_offset($offset){
+		//Make signed offsets unsigned for date_parse
+		if(strpos($offset, '-') !== false){
+			$negative_offset = true;
+			$offset = str_replace('-', '', $offset);
+		}else{
+			if(strpos($offset, '+') !== false){
+				$negative_offset = false;
+				$offset = str_replace('+', '', $offset);
+			}else{
+				return false;
+			}
+		}
+
+		$parsed = date_parse($offset);
+		$offset = $parsed['hour'] * 3600 + $parsed['minute'] * 60 + $parsed['second'];
+
+		//After date_parse is done, put the sign back
+		if($negative_offset == true){
+			$offset = -abs($offset);
+		}
+
+		//And then, look the offset up.
+		//timezone_name_from_abbr is not used because it returns false on some(most) offsets because it's mapping function is weird.
+		//That's been a bug in PHP since 2008!
+		foreach(timezone_abbreviations_list() as $zones){
+			foreach($zones as $timezone){
+				if($timezone['offset'] == $offset){
+					return $timezone['timezone_id'];
+				}
+			}
+		}
+
+		return false;
+	}
+
+	if(isset($opts["enable-profiler"])){
+		if(function_exists("profiler_enable")){
+			\profiler_enable();
+			$logger->notice("Execution is being profiled");
+		}else{
+			$logger->notice("No profiler found. Please install https://github.com/krakjoe/profiler");
+		}
+	}
+
+	/**
+	 * @param $pid
+	 */
+	function kill($pid){
+		switch(Utils::getOS()){
+			case "win":
+				exec("taskkill.exe /F /PID " . ((int) $pid) . " > NUL");
+				break;
+			case "mac":
+			case "linux":
+			default:
+				if(function_exists("posix_kill")){
+					posix_kill($pid, SIGKILL);
+				}else{
+					exec("kill -9 " . ((int) $pid) . " > /dev/null 2>&1");
+				}
+		}
+	}
+
+	/**
+	 * @param object $value
+	 * @param bool   $includeCurrent
+	 *
+	 * @return int
+	 */
+	function getReferenceCount($value, $includeCurrent = true){
+		ob_start();
+		debug_zval_dump($value);
+		$ret = explode("\n", ob_get_contents());
+		ob_end_clean();
+
+		if(count($ret) >= 1 and preg_match('/^.* refcount\\(([0-9]+)\\)\\{$/', trim($ret[0]), $m) > 0){
+			return ((int) $m[1]) - ($includeCurrent ? 3 : 4); //$value + zval call + extra call
+		}
+
+		return -1;
+	}
+
+	/**
+	 * @param int  $start
+	 * @param null $trace
+	 *
+	 * @return array
+	 */
+	function getTrace($start = 1, $trace = null){
+		if($trace === null){
+			if(function_exists("xdebug_get_function_stack")){
+				$trace = array_reverse(xdebug_get_function_stack());
+			}else{
+				$e = new \Exception();
+				$trace = $e->getTrace();
+			}
+		}
+
+		$messages = [];
+		$j = 0;
+		for($i = (int) $start; isset($trace[$i]); ++$i, ++$j){
+			$params = "";
+			if(isset($trace[$i]["args"]) or isset($trace[$i]["params"])){
+				if(isset($trace[$i]["args"])){
+					$args = $trace[$i]["args"];
+				}else{
+					$args = $trace[$i]["params"];
+				}
+				foreach($args as $name => $value){
+					$params .= (is_object($value) ? get_class($value) . " " . (method_exists($value, "__toString") ? $value->__toString() : "object") : gettype($value) . " " . (is_array($value) ? "Array()" : Utils::printable(@strval($value)))) . ", ";
+				}
+			}
+			$messages[] = "#$j " . (isset($trace[$i]["file"]) ? cleanPath($trace[$i]["file"]) : "") . "(" . (isset($trace[$i]["line"]) ? $trace[$i]["line"] : "") . "): " . (isset($trace[$i]["class"]) ? $trace[$i]["class"] . (($trace[$i]["type"] === "dynamic" or $trace[$i]["type"] === "->") ? "->" : "::") : "") . $trace[$i]["function"] . "(" . Utils::printable(substr($params, 0, -2)) . ")";
+		}
+
+		return $messages;
+	}
+
+	/**
+	 * @param $path
+	 *
+	 * @return string
+	 */
+	function cleanPath($path){
+		return rtrim(str_replace(["\\", ".php", "phar://", rtrim(str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PATH), "/"), rtrim(str_replace(["\\", "phar://"], ["/", ""], \pocketmine\PLUGIN_PATH), "/")], ["/", "", "", "", ""], $path), "/");
+	}
+
+	$errors = 0;
+
+	if(php_sapi_name() !== "cli"){
+		$logger->critical("You must run PocketMine-MP using the CLI.");
+		++$errors;
+	}
+
+	if(!extension_loaded("sockets")){
+		$logger->critical("Unable to find the Socket extension.");
+		++$errors;
+	}
+
+	$pthreads_version = phpversion("pthreads");
+	if(substr_count($pthreads_version, ".") < 2){
+		$pthreads_version = "0.$pthreads_version";
+	}
+	if(version_compare($pthreads_version, "3.1.5") < 0){
+		$logger->critical("pthreads >= 3.1.5 is required, while you have $pthreads_version.");
+		++$errors;
+	}
+
+	if(!extension_loaded("uopz")){
+		//$logger->notice("Couldn't find the uopz extension. Some functions may be limited");
+	}
+
+	if(extension_loaded("pocketmine")){
+		if(version_compare(phpversion("pocketmine"), "0.0.1") < 0){
+			$logger->critical("You have the native PocketMine extension, but your version is lower than 0.0.1.");
+			++$errors;
+		}elseif(version_compare(phpversion("pocketmine"), "0.0.4") > 0){
+			$logger->critical("You have the native PocketMine extension, but your version is higher than 0.0.4.");
+			++$errors;
+		}
+	}
+
+	if(extension_loaded("xdebug")){
+		$logger->warning("
+
+
+	You are running PocketMine with xdebug enabled. This has a major impact on performance.
+
+		");
+	}
+
+	if(!extension_loaded("curl")){
+		$logger->critical("Unable to find the cURL extension.");
+		++$errors;
+	}
+
+	if(!extension_loaded("yaml")){
+		$logger->critical("Unable to find the YAML extension.");
+		++$errors;
+	}
+
+	if(!extension_loaded("sqlite3")){
+		$logger->critical("Unable to find the SQLite3 extension.");
+		++$errors;
+	}
+
+	if(!extension_loaded("zlib")){
+		$logger->critical("Unable to find the Zlib extension.");
+		++$errors;
+	}
+
+	if($errors > 0){
+		$logger->critical("Please update your PHP from itxtech.org/genisys/get/, or recompile PHP again.");
+		$logger->shutdown();
+		$logger->join();
+		exit(1); //Exit with error
+	}
+
+	if(file_exists(\pocketmine\PATH . ".git/refs/heads/master")){ //Found Git information!
+		define('pocketmine\GIT_COMMIT', strtolower(trim(file_get_contents(\pocketmine\PATH . ".git/refs/heads/master"))));
+	}else{
+		define('pocketmine\GIT_COMMIT', "0000000000000000000000000000000000000000");
+	}
+
+	@define("ENDIANNESS", (pack("d", 1) === "\77\360\0\0\0\0\0\0" ? Binary::BIG_ENDIAN : Binary::LITTLE_ENDIAN));
+	@define("INT32_MASK", is_int(0xffffffff) ? 0xffffffff : -1);
+	@ini_set("opcache.mmap_base", bin2hex(random_bytes(8))); //Fix OPCache address errors
+
+	$lang = "unknown";
+	if(!file_exists(\pocketmine\DATA . "server.properties") and !isset($opts["no-wizard"])){
+		$inst = new Installer();
+		$lang = $inst->getDefaultLang();
+	}
+
+	ThreadManager::init();
+	new Server($autoloader, $logger, \pocketmine\PATH, \pocketmine\DATA, \pocketmine\PLUGIN_PATH, $lang);
+
+	$logger->info("Stopping other threads");
+
+	foreach(ThreadManager::getInstance()->getAll() as $id => $thread){
+		$logger->debug("Stopping " . (new \ReflectionClass($thread))->getShortName() . " thread");
+		$thread->quit();
+	}
+
+	$logger->shutdown();
+	$logger->join();
+
+	//echo "Server has stopped" . Terminal::$FORMAT_RESET . "\n";
+
+	$logger->info(Utils::getThreadCount() . " threads has stopped");//add threads count
+
+	$logger->info("Server has stopped");
+
+	exit(0);
+
+}
+<?php
+
+/*
+ * PocketMine Standard PHP Library
+ * Copyright (C) 2014-2016 PocketMine Team <https://github.com/PocketMine/PocketMine-SPL>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+*/
+
+interface ClassLoader{
+
+	/**
+	 * @param ClassLoader $parent
+	 */
+	public function __construct(ClassLoader $parent = null);
+
+	/**
+	 * Adds a path to the lookup list
+	 *
+	 * @param string $path
+	 * @param bool   $prepend
+	 */
+	public function addPath($path, $prepend = false);
+
+	/**
+	 * Removes a path from the lookup list
+	 *
+	 * @param $path
+	 */
+	public function removePath($path);
+
+	/**
+	 * Returns an array of the classes loaded
+	 *
+	 * @return string[]
+	 */
+	public function getClasses();
+
+	/**
+	 * Returns the parent ClassLoader, if any
+	 *
+	 * @return ClassLoader
+	 */
+	public function getParent();
+
+	/**
+	 * Attaches the ClassLoader to the PHP runtime
+	 *
+	 * @param bool $prepend
+	 *
+	 * @return bool
+	 */
+	public function register($prepend = false);
+
+	/**
+	 * Called when there is a class to load
+	 *
+	 * @param string $name
+	 *
+	 * @return bool
+	 *
+	 * @throws ClassNotFoundException
+	 */
+	public function loadClass($name);
+
+	/**
+	 * Returns the path for the class, if any
+	 *
+	 * @param string $name
+	 *
+	 * @return string|null
+	 */
+	public function findClass($name);
+}<?php
+
+/*
+ * PocketMine Standard PHP Library
+ * Copyright (C) 2014-2016 PocketMine Team <https://github.com/PocketMine/PocketMine-SPL>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+*/
+
+class BaseClassLoader extends \Threaded implements ClassLoader{
+
+	/** @var \ClassLoader */
+	private $parent;
+	/** @var string[] */
+	private $lookup;
+	/** @var string[] */
+	private $classes;
+
+
+	/**
+	 * @param ClassLoader $parent
+	 */
+	public function __construct(ClassLoader $parent = null){
+		$this->parent = $parent;
+		$this->lookup = new \Threaded;
+		$this->classes = new \Threaded;
+	}
+
+	/**
+	 * Adds a path to the lookup list
+	 *
+	 * @param string $path
+	 * @param bool   $prepend
+	 */
+	public function addPath($path, $prepend = false){
+
+		foreach($this->lookup as $p){
+			if($p === $path){
+				return;
+			}
+		}
+
+		if($prepend){
+			$this->synchronized(function($path){
+				$entries = $this->getAndRemoveLookupEntries();
+				$this->lookup[] = $path;
+				foreach($entries as $entry){
+					$this->lookup[] = $entry;
+				}
+			}, $path);
+		}else{
+			$this->lookup[] = $path;
+		}
+	}
+	
+	protected function getAndRemoveLookupEntries(){
+		$entries = [];
+		while($this->count() > 0){
+			$entries[] = $this->shift();
+		}
+		return $entries;
+	}
+
+	/**
+	 * Removes a path from the lookup list
+	 *
+	 * @param $path
+	 */
+	public function removePath($path){
+		foreach($this->lookup as $i => $p){
+			if($p === $path){
+				unset($this->lookup[$i]);
+			}
+		}
+	}
+
+	/**
+	 * Returns an array of the classes loaded
+	 *
+	 * @return string[]
+	 */
+	public function getClasses(){
+		$classes = [];
+		foreach($this->classes as $class){
+			$classes[] = $class;
+		}
+		return $classes;
+	}
+
+	/**
+	 * Returns the parent ClassLoader, if any
+	 *
+	 * @return ClassLoader
+	 */
+	public function getParent(){
+		return $this->parent;
+	}
+
+	/**
+	 * Attaches the ClassLoader to the PHP runtime
+	 *
+	 * @param bool $prepend
+	 *
+	 * @return bool
+	 */
+	public function register($prepend = false){
+		spl_autoload_register([$this, "loadClass"], true, $prepend);
+	}
+
+	/**
+	 * Called when there is a class to load
+	 *
+	 * @param string $name
+	 *
+	 * @return bool
+	 */
+	public function loadClass($name){
+		$path = $this->findClass($name);
+		if($path !== null){
+			include($path);
+			if(!class_exists($name, false) and !interface_exists($name, false) and !trait_exists($name, false)){
+				if($this->getParent() === null){
+					throw new ClassNotFoundException("Class $name not found");
+				}
+				return false;
+			}
+
+			if(method_exists($name, "onClassLoaded") and (new ReflectionClass($name))->getMethod("onClassLoaded")->isStatic()){
+				$name::onClassLoaded();
+			}
+			
+			$this->classes[] = $name;
+
+			return true;
+		}elseif($this->getParent() === null){
+			throw new ClassNotFoundException("Class $name not found");
+		}
+
+		return false;
+	}
+
+	/**
+	 * Returns the path for the class, if any
+	 *
+	 * @param string $name
+	 *
+	 * @return string|null
+	 */
+	public function findClass($name){
+		$components = explode("\\", $name);
+
+		$baseName = implode(DIRECTORY_SEPARATOR, $components);
+
+
+		foreach($this->lookup as $path){
+			if(PHP_INT_SIZE === 8 and file_exists($path . DIRECTORY_SEPARATOR . $baseName . "__64bit.php")){
+				return $path . DIRECTORY_SEPARATOR . $baseName . "__64bit.php";
+			}elseif(PHP_INT_SIZE === 4 and file_exists($path . DIRECTORY_SEPARATOR . $baseName . "__32bit.php")){
+				return $path . DIRECTORY_SEPARATOR . $baseName . "__32bit.php";
+			}elseif(file_exists($path . DIRECTORY_SEPARATOR . $baseName . ".php")){
+				return $path . DIRECTORY_SEPARATOR . $baseName . ".php";
+			}
+		}
+
+		return null;
+	}
+}
+<?php
+
+/*
+ *
+ *  ____            _        _   __  __ _                  __  __ ____  
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \ 
+ * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
+ * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/ 
+ * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_| 
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author PocketMine Team
+ * @link http://www.pocketmine.net/
+ * 
+ *
+*/
+
+namespace pocketmine\utils;
+
+abstract class Terminal {
+	public static $FORMAT_BOLD = "";
+	public static $FORMAT_OBFUSCATED = "";
+	public static $FORMAT_ITALIC = "";
+	public static $FORMAT_UNDERLINE = "";
+	public static $FORMAT_STRIKETHROUGH = "";
+
+	public static $FORMAT_RESET = "";
+
+	public static $COLOR_BLACK = "";
+	public static $COLOR_DARK_BLUE = "";
+	public static $COLOR_DARK_GREEN = "";
+	public static $COLOR_DARK_AQUA = "";
+	public static $COLOR_DARK_RED = "";
+	public static $COLOR_PURPLE = "";
+	public static $COLOR_GOLD = "";
+	public static $COLOR_GRAY = "";
+	public static $COLOR_DARK_GRAY = "";
+	public static $COLOR_BLUE = "";
+	public static $COLOR_GREEN = "";
+	public static $COLOR_AQUA = "";
+	public static $COLOR_RED = "";
+	public static $COLOR_LIGHT_PURPLE = "";
+	public static $COLOR_YELLOW = "";
+	public static $COLOR_WHITE = "";
+
+	private static $formattingCodes = null;
+
+	public static function init(){
+		if(!self::hasFormattingCodes()){
+			return;
+		}
+
+		switch(Utils::getOS()){
+			case "linux":
+			case "mac":
+			case "bsd":
+				self::getEscapeCodes();
+
+				return;
+
+			case "win":
+			case "android":
+				self::getFallbackEscapeCodes();
+
+				return;
+		}
+
+		//TODO: iOS
+	}
+
+	/**
+	 * @return bool|null
+	 */
+	public static function hasFormattingCodes(){
+		if(self::$formattingCodes === null){
+			$opts = getopt("", ["enable-ansi", "disable-ansi"]);
+			if(isset($opts["disable-ansi"])){
+				self::$formattingCodes = false;
+			}else{
+				self::$formattingCodes = ((Utils::getOS() !== "win" and getenv("TERM") != "" and (!function_exists("posix_ttyname") or !defined("STDOUT") or posix_ttyname(STDOUT) !== false)) or isset($opts["enable-ansi"]));
+			}
+		}
+
+		return self::$formattingCodes;
+	}
+
+	protected static function getEscapeCodes(){
+		self::$FORMAT_BOLD = `tput bold`;
+		self::$FORMAT_OBFUSCATED = `tput smacs`;
+		self::$FORMAT_ITALIC = `tput sitm`;
+		self::$FORMAT_UNDERLINE = `tput smul`;
+		self::$FORMAT_STRIKETHROUGH = "\x1b[9m"; //`tput `;
+
+		self::$FORMAT_RESET = `tput sgr0`;
+
+		$colors = (int) `tput colors`;
+		if($colors > 8){
+			self::$COLOR_BLACK = $colors >= 256 ? `tput setaf 16` : `tput setaf 0`;
+			self::$COLOR_DARK_BLUE = $colors >= 256 ? `tput setaf 19` : `tput setaf 4`;
+			self::$COLOR_DARK_GREEN = $colors >= 256 ? `tput setaf 34` : `tput setaf 2`;
+			self::$COLOR_DARK_AQUA = $colors >= 256 ? `tput setaf 37` : `tput setaf 6`;
+			self::$COLOR_DARK_RED = $colors >= 256 ? `tput setaf 124` : `tput setaf 1`;
+			self::$COLOR_PURPLE = $colors >= 256 ? `tput setaf 127` : `tput setaf 5`;
+			self::$COLOR_GOLD = $colors >= 256 ? `tput setaf 214` : `tput setaf 3`;
+			self::$COLOR_GRAY = $colors >= 256 ? `tput setaf 145` : `tput setaf 7`;
+			self::$COLOR_DARK_GRAY = $colors >= 256 ? `tput setaf 59` : `tput setaf 8`;
+			self::$COLOR_BLUE = $colors >= 256 ? `tput setaf 63` : `tput setaf 12`;
+			self::$COLOR_GREEN = $colors >= 256 ? `tput setaf 83` : `tput setaf 10`;
+			self::$COLOR_AQUA = $colors >= 256 ? `tput setaf 87` : `tput setaf 14`;
+			self::$COLOR_RED = $colors >= 256 ? `tput setaf 203` : `tput setaf 9`;
+			self::$COLOR_LIGHT_PURPLE = $colors >= 256 ? `tput setaf 207` : `tput setaf 13`;
+			self::$COLOR_YELLOW = $colors >= 256 ? `tput setaf 227` : `tput setaf 11`;
+			self::$COLOR_WHITE = $colors >= 256 ? `tput setaf 231` : `tput setaf 15`;
+		}else{
+			self::$COLOR_BLACK = self::$COLOR_DARK_GRAY = `tput setaf 0`;
+			self::$COLOR_RED = self::$COLOR_DARK_RED = `tput setaf 1`;
+			self::$COLOR_GREEN = self::$COLOR_DARK_GREEN = `tput setaf 2`;
+			self::$COLOR_YELLOW = self::$COLOR_GOLD = `tput setaf 3`;
+			self::$COLOR_BLUE = self::$COLOR_DARK_BLUE = `tput setaf 4`;
+			self::$COLOR_LIGHT_PURPLE = self::$COLOR_PURPLE = `tput setaf 5`;
+			self::$COLOR_AQUA = self::$COLOR_DARK_AQUA = `tput setaf 6`;
+			self::$COLOR_GRAY = self::$COLOR_WHITE = `tput setaf 7`;
+		}
+	}
+
+	protected static function getFallbackEscapeCodes(){
+		self::$FORMAT_BOLD = "\x1b[1m";
+		self::$FORMAT_OBFUSCATED = "";
+		self::$FORMAT_ITALIC = "\x1b[3m";
+		self::$FORMAT_UNDERLINE = "\x1b[4m";
+		self::$FORMAT_STRIKETHROUGH = "\x1b[9m";
+
+		self::$FORMAT_RESET = "\x1b[m";
+
+		self::$COLOR_BLACK = "\x1b[38;5;16m";
+		self::$COLOR_DARK_BLUE = "\x1b[38;5;19m";
+		self::$COLOR_DARK_GREEN = "\x1b[38;5;34m";
+		self::$COLOR_DARK_AQUA = "\x1b[38;5;37m";
+		self::$COLOR_DARK_RED = "\x1b[38;5;124m";
+		self::$COLOR_PURPLE = "\x1b[38;5;127m";
+		self::$COLOR_GOLD = "\x1b[38;5;214m";
+		self::$COLOR_GRAY = "\x1b[38;5;145m";
+		self::$COLOR_DARK_GRAY = "\x1b[38;5;59m";
+		self::$COLOR_BLUE = "\x1b[38;5;63m";
+		self::$COLOR_GREEN = "\x1b[38;5;83m";
+		self::$COLOR_AQUA = "\x1b[38;5;87m";
+		self::$COLOR_RED = "\x1b[38;5;203m";
+		self::$COLOR_LIGHT_PURPLE = "\x1b[38;5;207m";
+		self::$COLOR_YELLOW = "\x1b[38;5;227m";
+		self::$COLOR_WHITE = "\x1b[38;5;231m";
+	}
+
+}<?php
+
+/*
+ *
+ *  ____            _        _   __  __ _                  __  __ ____  
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \ 
+ * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
+ * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/ 
+ * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_| 
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author PocketMine Team
+ * @link http://www.pocketmine.net/
+ * 
+ *
+*/
+
+/**
+ * Various Utilities used around the code
+ */
+
+namespace pocketmine\utils;
+
+use pocketmine\ThreadManager;
+
+/**
+ * Big collection of functions
+ */
+class Utils {
+	public static $online = true;
+	public static $ip = false;
+	public static $os;
+	private static $serverUniqueId = null;
+
+	/**
+	 * Generates an unique identifier to a callable
+	 *
+	 * @param callable $variable
+	 *
+	 * @return string
+	 */
+	public static function getCallableIdentifier(callable $variable){
+		if(is_array($variable)){
+			return sha1(strtolower(spl_object_hash($variable[0])) . "::" . strtolower($variable[1]));
+		}else{
+			return sha1(strtolower($variable));
+		}
+	}
+
+	/**
+	 * Gets this machine / server instance unique ID
+	 * Returns a hash, the first 32 characters (or 16 if raw)
+	 * will be an identifier that won't change frequently.
+	 * The rest of the hash will change depending on other factors.
+	 *
+	 * @param string $extra optional, additional data to identify the machine
+	 *
+	 * @return UUID
+	 */
+	public static function getMachineUniqueId($extra = ""){
+		if(self::$serverUniqueId !== null and $extra === ""){
+			return self::$serverUniqueId;
+		}
+
+		$machine = php_uname("a");
+		$machine .= file_exists("/proc/cpuinfo") ? implode(preg_grep("/(model name|Processor|Serial)/", file("/proc/cpuinfo"))) : "";
+		$machine .= sys_get_temp_dir();
+		$machine .= $extra;
+		$os = Utils::getOS();
+		if($os === "win"){
+			@exec("ipconfig /ALL", $mac);
+			$mac = implode("\n", $mac);
+			if(preg_match_all("#Physical Address[. ]{1,}: ([0-9A-F\\-]{17})#", $mac, $matches)){
+				foreach($matches[1] as $i => $v){
+					if($v == "00-00-00-00-00-00"){
+						unset($matches[1][$i]);
+					}
+				}
+				$machine .= implode(" ", $matches[1]); //Mac Addresses
+			}
+		}elseif($os === "linux"){
+			if(file_exists("/etc/machine-id")){
+				$machine .= file_get_contents("/etc/machine-id");
+			}else{
+				@exec("ifconfig", $mac);
+				$mac = implode("\n", $mac);
+				if(preg_match_all("#HWaddr[ \t]{1,}([0-9a-f:]{17})#", $mac, $matches)){
+					foreach($matches[1] as $i => $v){
+						if($v == "00:00:00:00:00:00"){
+							unset($matches[1][$i]);
+						}
+					}
+					$machine .= implode(" ", $matches[1]); //Mac Addresses
+				}
+			}
+		}elseif($os === "android"){
+			$machine .= @file_get_contents("/system/build.prop");
+		}elseif($os === "mac"){
+			$machine .= `system_profiler SPHardwareDataType | grep UUID`;
+		}
+		$data = $machine . PHP_MAXPATHLEN;
+		$data .= PHP_INT_MAX;
+		$data .= PHP_INT_SIZE;
+		$data .= get_current_user();
+		foreach(get_loaded_extensions() as $ext){
+			$data .= $ext . ":" . phpversion($ext);
+		}
+
+		$uuid = UUID::fromData($machine, $data);
+
+		if($extra === ""){
+			self::$serverUniqueId = $uuid;
+		}
+
+		return $uuid;
+	}
+
+	/**
+	 * Returns the current Operating System
+	 * Windows => win
+	 * MacOS => mac
+	 * iOS => ios
+	 * Android => android
+	 * Linux => Linux
+	 * BSD => bsd
+	 * Other => other
+	 *
+	 * @param bool $recalculate
+	 *
+	 * @return string
+	 */
+	public static function getOS($recalculate = false){
+		if(self::$os === null or $recalculate){
+			$uname = php_uname("s");
+			if(stripos($uname, "Darwin") !== false){
+				if(strpos(php_uname("m"), "iP") === 0){
+					self::$os = "ios";
+				}else{
+					self::$os = "mac";
+				}
+			}elseif(stripos($uname, "Win") !== false or $uname === "Msys"){
+				self::$os = "win";
+			}elseif(stripos($uname, "Linux") !== false){
+				if(@file_exists("/system/build.prop")){
+					self::$os = "android";
+				}else{
+					self::$os = "linux";
+				}
+			}elseif(stripos($uname, "BSD") !== false or $uname === "DragonFly"){
+				self::$os = "bsd";
+			}else{
+				self::$os = "other";
+			}
+		}
+
+		return self::$os;
+	}
+
+	/**
+	 * Gets the External IP using an external service, it is cached
+	 *
+	 * @param bool $force default false, force IP check even when cached
+	 *
+	 * @return string
+	 */
+
+	public static function getIP($force = false){
+		if(Utils::$online === false){
+			return false;
+		}elseif(Utils::$ip !== false and $force !== true){
+			return Utils::$ip;
+		}
+		$ip = trim(strip_tags(Utils::getURL("https://api.ipify.org")));
+		if($ip){
+			Utils::$ip = $ip;
+		}else{
+			$ip = Utils::getURL("http://www.checkip.org/");
+			if(preg_match('#">([0-9a-fA-F\:\.]*)</span>#', $ip, $matches) > 0){
+				Utils::$ip = $matches[1];
+			}else{
+				$ip = Utils::getURL("http://checkmyip.org/");
+				if(preg_match('#Your IP address is ([0-9a-fA-F\:\.]*)#', $ip, $matches) > 0){
+					Utils::$ip = $matches[1];
+				}else{
+					$ip = trim(Utils::getURL("http://ifconfig.me/ip"));
+					if($ip != ""){
+						Utils::$ip = $ip;
+					}else{
+						return false;
+					}
+				}
+			}
+		}
+
+		return Utils::$ip;
+
+	}
+
+	/**
+	 * GETs an URL using cURL
+	 *
+	 * @param       $page
+	 * @param int   $timeout default 10
+	 * @param array $extraHeaders
+	 *
+	 * @return bool|mixed
+	 */
+	public static function getURL($page, $timeout = 10, array $extraHeaders = []){
+		if(Utils::$online === false){
+			return false;
+		}
+
+		$ch = curl_init($page);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge(["User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0 PocketMine-MP"], $extraHeaders));
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+		curl_setopt($ch, CURLOPT_FORBID_REUSE, 1);
+		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int) $timeout);
+		curl_setopt($ch, CURLOPT_TIMEOUT, (int) $timeout);
+		$ret = curl_exec($ch);
+		curl_close($ch);
+
+		return $ret;
+	}
+
+	/**
+	 * @return array
+	 */
+	public static function getRealMemoryUsage(){
+		$stack = 0;
+		$heap = 0;
+
+		if(Utils::getOS() === "linux" or Utils::getOS() === "android"){
+			$mappings = file("/proc/self/maps");
+			foreach($mappings as $line){
+				if(preg_match("#([a-z0-9]+)\\-([a-z0-9]+) [rwxp\\-]{4} [a-z0-9]+ [^\\[]*\\[([a-zA-z0-9]+)\\]#", trim($line), $matches) > 0){
+					if(strpos($matches[3], "heap") === 0){
+						$heap += hexdec($matches[2]) - hexdec($matches[1]);
+					}elseif(strpos($matches[3], "stack") === 0){
+						$stack += hexdec($matches[2]) - hexdec($matches[1]);
+					}
+				}
+			}
+		}
+
+		return [$heap, $stack];
+	}
+
+	/**
+	 * @param bool $advanced
+	 *
+	 * @return array|int|null
+	 */
+	public static function getMemoryUsage($advanced = false){
+		$reserved = memory_get_usage();
+		$VmSize = null;
+		$VmRSS = null;
+		if(Utils::getOS() === "linux" or Utils::getOS() === "android"){
+			$status = file_get_contents("/proc/self/status");
+			if(preg_match("/VmRSS:[ \t]+([0-9]+) kB/", $status, $matches) > 0){
+				$VmRSS = $matches[1] * 1024;
+			}
+
+			if(preg_match("/VmSize:[ \t]+([0-9]+) kB/", $status, $matches) > 0){
+				$VmSize = $matches[1] * 1024;
+			}
+		}
+
+		//TODO: more OS
+
+		if($VmRSS === null){
+			$VmRSS = memory_get_usage();
+		}
+
+		if(!$advanced){
+			return $VmRSS;
+		}
+
+		if($VmSize === null){
+			$VmSize = memory_get_usage(true);
+		}
+
+		return [$reserved, $VmRSS, $VmSize];
+	}
+
+	/**
+	 * @return int
+	 */
+	public static function getThreadCount(){
+		if(Utils::getOS() === "linux" or Utils::getOS() === "android"){
+			if(preg_match("/Threads:[ \t]+([0-9]+)/", file_get_contents("/proc/self/status"), $matches) > 0){
+				return (int) $matches[1];
+			}
+		}
+
+		//TODO: more OS
+
+		return count(ThreadManager::getInstance()->getAll()) + 3; //RakLib + MainLogger + Main Thread
+	}
+
+	/**
+	 * @param bool $recalculate
+	 *
+	 * @return int
+	 */
+	public static function getCoreCount($recalculate = false){
+		static $processors = 0;
+
+		if($processors > 0 and !$recalculate){
+			return $processors;
+		}else{
+			$processors = 0;
+		}
+
+		switch(Utils::getOS()){
+			case "linux":
+			case "android":
+				if(file_exists("/proc/cpuinfo")){
+					foreach(file("/proc/cpuinfo") as $l){
+						if(preg_match('/^processor[ \t]*:[ \t]*[0-9]+$/m', $l) > 0){
+							++$processors;
+						}
+					}
+				}else{
+					if(preg_match("/^([0-9]+)\\-([0-9]+)$/", trim(@file_get_contents("/sys/devices/system/cpu/present")), $matches) > 0){
+						$processors = (int) ($matches[2] - $matches[1]);
+					}
+				}
+				break;
+			case "bsd":
+			case "mac":
+				$processors = (int) `sysctl -n hw.ncpu`;
+				$processors = (int) `sysctl -n hw.ncpu`;
+				break;
+			case "win":
+				$processors = (int) getenv("NUMBER_OF_PROCESSORS");
+				break;
+		}
+
+		return $processors;
+	}
+
+	/**
+	 * Returns a prettified hexdump
+	 *
+	 * @param string $bin
+	 *
+	 * @return string
+	 */
+	public static function hexdump($bin){
+		$output = "";
+		$bin = str_split($bin, 16);
+		foreach($bin as $counter => $line){
+			$hex = chunk_split(chunk_split(str_pad(bin2hex($line), 32, " ", STR_PAD_RIGHT), 2, " "), 24, " ");
+			$ascii = preg_replace('#([^\x20-\x7E])#', ".", $line);
+			$output .= str_pad(dechex($counter << 4), 4, "0", STR_PAD_LEFT) . "  " . $hex . " " . $ascii . PHP_EOL;
+		}
+
+		return $output;
+	}
+
+	/**
+	 * Returns a string that can be printed, replaces non-printable characters
+	 *
+	 * @param $str
+	 *
+	 * @return string
+	 */
+	public static function printable($str){
+		if(!is_string($str)){
+			return gettype($str);
+		}
+
+		return preg_replace('#([^\x20-\x7E])#', '.', $str);
+	}
+
+	/*
+	public static function angle3D($pos1, $pos2){
+		$X = $pos1["x"] - $pos2["x"];
+		$Z = $pos1["z"] - $pos2["z"];
+		$dXZ = sqrt(pow($X, 2) + pow($Z, 2));
+		$Y = $pos1["y"] - $pos2["y"];
+		$hAngle = rad2deg(atan2($Z, $X) - M_PI_2);
+		$vAngle = rad2deg(-atan2($Y, $dXZ));
+
+		return array("yaw" => $hAngle, "pitch" => $vAngle);
+	}*/
+
+	/**
+	 * This function tries to get all the entropy available in PHP, and distills it to get a good RNG.
+	 *
+	 * This function simply forwards to the PHP random_bytes function.
+	 *
+	 * @param int    $length       default 16, Number of bytes to generate
+	 * @param bool   $secure       default true, Generate secure distilled bytes, slower
+	 * @param bool   $raw          default true, returns a binary string if true, or an hexadecimal one
+	 * @param string $startEntropy default null, adds more initial entropy
+	 * @param int    &$rounds      Will be set to the number of rounds taken
+	 * @param int    &$drop        Will be set to the amount of dropped bytes
+	 *
+	 * @deprecated prefer PHP 7 random_bytes()
+	 * @return string
+	 */
+	public static function getRandomBytes($length = 16, $secure = true, $raw = true, $startEntropy = "", &$rounds = 0, &$drop = 0){
+		$raw_output = random_bytes($length);
+		if($raw){
+			return $raw_output;
+		}else{
+			return bin2hex($raw_output);
+		}
+	}
+
+	/**
+	 * POSTs data to an URL
+	 *
+	 * @param              $page
+	 * @param array|string $args
+	 * @param int          $timeout
+	 * @param array        $extraHeaders
+	 *
+	 * @return bool|mixed
+	 */
+	public static function postURL($page, $args, $timeout = 10, array $extraHeaders = []){
+		if(Utils::$online === false){
+			return false;
+		}
+
+		$ch = curl_init($page);
+		curl_setopt($ch, CURLOPT_POST, 1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
+		curl_setopt($ch, CURLOPT_FORBID_REUSE, 1);
+		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, $args);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge(["User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0 PocketMine-MP"], $extraHeaders));
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, (int) $timeout);
+		curl_setopt($ch, CURLOPT_TIMEOUT, (int) $timeout);
+		$ret = curl_exec($ch);
+		curl_close($ch);
+
+		return $ret;
+	}
+
+	/**
+	 * @param $string
+	 *
+	 * @return int
+	 */
+	public static function javaStringHash($string){
+		$hash = 0;
+		for($i = 0; $i < strlen($string); $i++){
+			$ord = ord($string{$i});
+			if($ord & 0x80){
+				$ord -= 0x100;
+			}
+			$hash = 31 * $hash + $ord;
+			while($hash > 0x7FFFFFFF){
+				$hash -= 0x100000000;
+			}
+			while($hash < -0x80000000){
+				$hash += 0x100000000;
+			}
+			$hash &= 0xFFFFFFFF;
+		}
+
+		return $hash;
+	}
+
+}
+<?php
+
+/*
+ *
+ *  ____            _        _   __  __ _                  __  __ ____
+ * |  _ \ ___   ___| | _____| |_|  \/  (_)_ __   ___      |  \/  |  _ \
+ * | |_) / _ \ / __| |/ / _ \ __| |\/| | | '_ \ / _ \_____| |\/| | |_) |
+ * |  __/ (_) | (__|   <  __/ |_| |  | | | | | |  __/_____| |  | |  __/
+ * |_|   \___/ \___|_|\_\___|\__|_|  |_|_|_| |_|\___|     |_|  |_|_|
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * @author PocketMine Team
+ * @link http://www.pocketmine.net/
+ *
+ *
+*/
+
+namespace pocketmine\utils;
+
+use LogLevel;
+use pocketmine\Thread;
+use pocketmine\Worker;
+
+class MainLogger extends \AttachableThreadedLogger {
+	/** @var MainLogger */
+	public static $logger = null;
+	public $shouldSendMsg = "";
+	public $shouldRecordMsg = false;
+	protected $logFile;
+	protected $logStream;
+	protected $shutdown;
+	protected $logDebug;
+	/** Extra Settings */
+	protected $write = false;
+	private $logResource;
+	private $consoleCallback;
+	private $lastGet = 0;
+
+	/**
+	 * @param string $logFile
+	 * @param bool   $logDebug
+	 *
+	 * @throws \RuntimeException
+	 */
+	public function __construct($logFile, $logDebug = false){
+		if(static::$logger instanceof MainLogger){
+			throw new \RuntimeException("MainLogger has been already created");
+		}
+		static::$logger = $this;
+		touch($logFile);
+		$this->logFile = $logFile;
+		$this->logDebug = (bool) $logDebug;
+		$this->logStream = new \Threaded;
+		$this->start();
+	}
+
+	/**
+	 * @return MainLogger
+	 */
+	public static function getLogger(){
+		return static::$logger;
+	}
+
+	/**
+	 * @param $b
+	 */
+	public function setSendMsg($b){
+		$this->shouldRecordMsg = $b;
+		$this->lastGet = time();
+	}
+
+	/**
+	 * @return string
+	 */
+	public function getMessages(){
+		$msg = $this->shouldSendMsg;
+		$this->shouldSendMsg = "";
+		$this->lastGet = time();
+
+		return $msg;
+	}
+
+	/**
+	 * @param        $message
+	 * @param string $name
+	 */
+	public function developer($message, $name = "DEVELOPER"){
+		$this->send($message, \LogLevel::DEVELOPER, $name, TextFormat::GOLD);
+	}
+
+	/**
+	 * @param bool $logDebug
+	 */
+	public function setLogDebug($logDebug){
+		$this->logDebug = (bool) $logDebug;
+	}
+
+	/**
+	 * @param \Throwable $e
+	 * @param null       $trace
+	 */
+	public function logException(\Throwable $e, $trace = null){
+		if($trace === null){
+			$trace = $e->getTrace();
+		}
+		$errstr = $e->getMessage();
+		$errfile = $e->getFile();
+		$errno = $e->getCode();
+		$errline = $e->getLine();
+
+		$errorConversion = [
+			0 => "EXCEPTION",
+			E_ERROR => "E_ERROR",
+			E_WARNING => "E_WARNING",
+			E_PARSE => "E_PARSE",
+			E_NOTICE => "E_NOTICE",
+			E_CORE_ERROR => "E_CORE_ERROR",
+			E_CORE_WARNING => "E_CORE_WARNING",
+			E_COMPILE_ERROR => "E_COMPILE_ERROR",
+			E_COMPILE_WARNING => "E_COMPILE_WARNING",
+			E_USER_ERROR => "E_USER_ERROR",
+			E_USER_WARNING => "E_USER_WARNING",
+			E_USER_NOTICE => "E_USER_NOTICE",
+			E_STRICT => "E_STRICT",
+			E_RECOVERABLE_ERROR => "E_RECOVERABLE_ERROR",
+			E_DEPRECATED => "E_DEPRECATED",
+			E_USER_DEPRECATED => "E_USER_DEPRECATED",
+		];
+		if($errno === 0){
+			$type = LogLevel::CRITICAL;
+		}else{
+			$type = ($errno === E_ERROR or $errno === E_USER_ERROR) ? LogLevel::ERROR : (($errno === E_USER_WARNING or $errno === E_WARNING) ? LogLevel::WARNING : LogLevel::NOTICE);
+		}
+		$errno = isset($errorConversion[$errno]) ? $errorConversion[$errno] : $errno;
+		if(($pos = strpos($errstr, "\n")) !== false){
+			$errstr = substr($errstr, 0, $pos);
+		}
+		$errfile = \pocketmine\cleanPath($errfile);
+		$this->log($type, get_class($e) . ": \"$errstr\" ($errno) in \"$errfile\" at line $errline");
+		foreach(@\pocketmine\getTrace(1, $trace) as $i => $line){
+			$this->debug($line);
+		}
+	}
+
+	/**
+	 * @param mixed  $level
+	 * @param string $message
+	 */
+	public function log($level, $message){
+		switch($level){
+			case LogLevel::EMERGENCY:
+				$this->emergency($message);
+				break;
+			case LogLevel::ALERT:
+				$this->alert($message);
+				break;
+			case LogLevel::CRITICAL:
+				$this->critical($message);
+				break;
+			case LogLevel::ERROR:
+				$this->error($message);
+				break;
+			case LogLevel::WARNING:
+				$this->warning($message);
+				break;
+			case LogLevel::NOTICE:
+				$this->notice($message);
+				break;
+			case LogLevel::INFO:
+				$this->info($message);
+				break;
+			case LogLevel::DEBUG:
+				$this->debug($message);
+				break;
+		}
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function emergency($message, $name = "EMERGENCY"){
+		$this->send($message, \LogLevel::EMERGENCY, $name, TextFormat::RED);
+	}
+
+	/**
+	 * @param $message
+	 * @param $level
+	 * @param $prefix
+	 * @param $color
+	 */
+	protected function send($message, $level, $prefix, $color){
+		$now = time();
+
+		$thread = \Thread::getCurrentThread();
+		if($thread === null){
+			$threadName = "Server thread";
+		}elseif($thread instanceof Thread or $thread instanceof Worker){
+			$threadName = $thread->getThreadName() . " thread";
+		}else{
+			$threadName = (new \ReflectionClass($thread))->getShortName() . " thread";
+		}
+
+		if($this->shouldRecordMsg){
+			if((time() - $this->lastGet) >= 10) $this->shouldRecordMsg = false; // 10 secs timeout
+			else{
+				if(strlen($this->shouldSendMsg) >= 10000) $this->shouldSendMsg = "";
+				$this->shouldSendMsg .= $color . "|" . $prefix . "|" . trim($message, "\r\n") . "\n";
+			}
+		}
+
+		$message = TextFormat::toANSI(TextFormat::GREEN . "[Tesseract] " . TextFormat::RESET . TextFormat::AQUA . "[" . date("H:i:s", $now) . "] " . $color . $prefix . "> " . $message . TextFormat::RESET);
+		//$message = TextFormat::toANSI(TextFormat::AQUA . "[" . date("H:i:s") . "] ". TextFormat::RESET . $color ."<".$prefix . ">" . " " . $message . TextFormat::RESET);
+		$cleanMessage = TextFormat::clean($message);
+
+		if(!Terminal::hasFormattingCodes()){
+			echo $cleanMessage . PHP_EOL;
+		}else{
+			echo $message . PHP_EOL;
+		}
+
+		if(isset($this->consoleCallback)){
+			call_user_func($this->consoleCallback);
+		}
+
+		if($this->attachment instanceof \ThreadedLoggerAttachment){
+			$this->attachment->call($level, $message);
+		}
+
+		$this->logStream[] = date("Y-m-d", $now) . " " . $cleanMessage . "\n";
+		if($this->logStream->count() === 1){
+			$this->synchronized(function(){
+				$this->notify();
+			});
+		}
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function alert($message, $name = "ALERT"){
+		$this->send($message, \LogLevel::ALERT, $name, TextFormat::RED);
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function critical($message, $name = "CRITICAL"){
+		$this->send($message, \LogLevel::CRITICAL, $name, TextFormat::RED);
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function error($message, $name = "ERROR"){
+		$this->send($message, \LogLevel::ERROR, $name, TextFormat::DARK_RED);
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function warning($message, $name = "WARNING"){
+		$this->send($message, \LogLevel::WARNING, $name, TextFormat::YELLOW);
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function notice($message, $name = "NOTICE"){
+		$this->send(TextFormat::BOLD . $message, \LogLevel::NOTICE, $name, TextFormat::AQUA);
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function info($message, $name = "INFO"){
+		$this->send($message, \LogLevel::INFO, $name, TextFormat::WHITE);
+	}
+
+	/**
+	 * @param string $message
+	 * @param string $name
+	 */
+	public function debug($message, $name = "DEBUG"){
+		if($this->logDebug === false){
+			return;
+		}
+		$this->send($message, \LogLevel::DEBUG, $name, TextFormat::GRAY);
+	}
+
+	public function shutdown(){
+		$this->shutdown = true;
+	}
+
+	/*public function run(){
+		$this->shutdown = false;
+		if($this->write){
+			$this->logResource = fopen($this->logFile, "a+b");
+			if(!is_resource($this->logResource)){
+				throw new \RuntimeException("Couldn't open log file");
+			}
+
+			while($this->shutdown === false){
+				if(!$this->write) {
+					fclose($this->logResource);
+					break;
+				}
+				$this->synchronized(function(){
+					while($this->logStream->count() > 0){
+						$chunk = $this->logStream->shift();
+						fwrite($this->logResource, $chunk);
+					}
+
+					$this->wait(25000);
+				});
+			}
+
+			if($this->logStream->count() > 0){
+				while($this->logStream->count() > 0){
+					$chunk = $this->logStream->shift();
+					fwrite($this->logResource, $chunk);
+				}
+			}
+
+			fclose($this->logResource);
+		}
+	}*/
+
+	public function run(){
+		$this->shutdown = false;
+		while($this->shutdown === false){
+			$this->synchronized(function(){
+				while($this->logStream->count() > 0){
+					$chunk = $this->logStream->shift();
+					if($this->write){
+						$this->logResource = file_put_contents($this->logFile, $chunk, FILE_APPEND);
+					}
+				}
+
+				$this->wait(200000);
+			});
+		}
+
+		if($this->logStream->count() > 0){
+			while($this->logStream->count() > 0){
+				$chunk = $this->logStream->shift();
+				if($this->write){
+					$this->logResource = file_put_contents($this->logFile, $chunk, FILE_APPEND);
+				}
+			}
+		}
+	}
+
+	/**
+	 * @param $write
+	 */
+	public function setWrite($write){
+		$this->write = $write;
+	}
+
+	/**
+	 * @param $callback
+	 */
+	public function setConsoleCallback($callback){
+		$this->consoleCallback = $callback;
+	}
+}
+<?php
+
+/*
+ * PocketMine Standard PHP Library
+ * Copyright (C) 2014-2016 PocketMine Team <https://github.com/PocketMine/PocketMine-SPL>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+*/
+
+abstract class AttachableThreadedLogger extends \ThreadedLogger{
+
+	/** @var \ThreadedLoggerAttachment */
+	protected $attachment = null;
+
+	/**
+	 * @param ThreadedLoggerAttachment $attachment
+	 */
+	public function addAttachment(\ThreadedLoggerAttachment $attachment){
+		if($this->attachment instanceof \ThreadedLoggerAttachment){
+			$this->attachment->addAttachment($attachment);
+		}else{
+			$this->attachment = $attachment;
+		}
+	}
+
+	/**
+	 * @param ThreadedLoggerAttachment $attachment
+	 */
+	public function removeAttachment(\ThreadedLoggerAttachment $attachment){
+		if($this->attachment instanceof \ThreadedLoggerAttachment){
+			if($this->attachment === $attachment){
+				$this->attachment = null;
+				foreach($attachment->getAttachments() as $attachment){
+					$this->addAttachment($attachment);
+				}
+			}
+		}
+	}
+
+	public function removeAttachments(){
+		if($this->attachment instanceof \ThreadedLoggerAttachment){
+			$this->attachment->removeAttachments();
+			$this->attachment = null;
+		}
+	}
+
+	/**
+	 * @return \ThreadedLoggerAttachment[]
+	 */
+	public function getAttachments(){
+		$attachments = [];
+		if($this->attachment instanceof \ThreadedLoggerAttachment){
+			$attachments[] = $this->attachment;
+			$attachments += $this->attachment->getAttachments();
+		}
+
+		return $attachments;
+	}
+}<?php
+
+/*
+ * PocketMine Standard PHP Library
+ * Copyright (C) 2014-2016 PocketMine Team <https://github.com/PocketMine/PocketMine-SPL>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+*/
+
+abstract class ThreadedLogger extends \Thread implements Logger{
+
+}<?php
+
+/*
+ * PocketMine Standard PHP Library
+ * Copyright (C) 2014-2016 PocketMine Team <https://github.com/PocketMine/PocketMine-SPL>
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+*/
+
+interface Logger{
+
+	/**
+	 * System is unusable
+	 *
+	 * @param string $message
+	 */
+	public function emergency($message);
+
+	/**
+	 * Action must me taken immediately
+	 *
+	 * @param string $message
+	 */
+	public function alert($message);
+
+	/**
+	 * Critical conditions
+	 *
+	 * @param string $message
+	 */
+	public function critical($message);
+
+	/**
+	 * Runtime errors that do not require immediate action but should typically
+	 * be logged and monitored.
+	 *
+	 * @param string $message
+	 */
+	public function error($message);
+
+	/**
+	 * Exceptional occurrences that are not errors.
+	 *
+	 * Example: Use of deprecated APIs, poor use of an API, undesirable things
+	 * that are not necessarily wrong.
+	 *
+	 * @param string $message
+	 */
+	public function warning($message);
+
+	/**
+	 * Normal but significant events.
+	 *
+	 * @param string $message
+	 */
+	public function notice($message);
+
+	/**
+	 * Inersting events.
+	 *
+	 * @param string $message
+	 */
+	public function info($message);
+
+	/**
+	 * Detailed debug information.
+	 *
+	 * @param string $message
+	 */
+	public function debug($message);
+
+	/**
+	 * Logs with an arbitrary level.
+	 *
+	 * @param mixed  $level
+	 * @param string $message
+	 */
+	public function log($level, $message);
+
+	/**
+	 * Logs a Throwable object
+	 *
+	 * @param Throwable $e
+	 * @param $trace
+	 */
+	public function logException(\Throwable $e, $trace = null);
+}

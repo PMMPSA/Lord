@@ -1,0 +1,54 @@
+#----------------------BackPackPE---------------------#
+# Welcome to BackPackPE by AlphaMisery aka LordHippo! #
+#-----------------------------------------------------#
+
+#-----------------------------------------------------#
+#      Enable Player to buy a BackPack via /buybp     #
+#     Use 1 to enable or use any Number to disable    #
+#-----------------------------------------------------#
+
+# This is not implemented yet!
+# Will be coming soon!
+buybackpack: 1
+
+#-----------------------------------------------------#
+#Use any Price you want (BuyBackPack must be enabled!)#
+#-----------------------------------------------------#
+
+backpack-price: 1000
+
+#-----------------------------------------------------#
+#        Messages - Modify the Plugins Messages!      #
+#                   Use § for Colors!                #
+#-----------------------------------------------------#
+
+no-perm-command: "§f[§cError§f]§7 You do not have Permission to perform this Command!"
+
+no-perm-action: "§f[§cError§f]§7 You do not have Permission to perform this Action!"
+
+not-enough-money: "§f[§cError§f]§7 You do not have enough Money to buy a BackPack!"
+
+inv-full: "§f[§cError§f]§7 Your Inventory is full!"
+
+failed: "§f[§cError§f]§7 This is currently disabled!"
+
+bp-name: "§cBackPack"
+
+bp-opened: "§aYou've opened your BackPack!"
+
+bp-bought: "§aYou've bought a BackPack!"
+
+et-open: "§aYou've opened an ETable!"
+
+bphelp: "Opens your BackPack!"
+
+buybphelp: "Buy a BackPack!"
+
+ethelp: "Opens an Enchantment Table!"
+
+bp-given: "§aCheck your Inventory!"
+
+#-----------------------------------------------------#
+#  Thanks for Downloading! Please read the License !  #
+#              Website = PocketClub.net               #
+#-----------------------------------------------------#

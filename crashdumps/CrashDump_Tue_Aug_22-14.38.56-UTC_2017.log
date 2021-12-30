@@ -1,0 +1,69 @@
+Tesseract Crash Dump Tue Aug 22 14:38:56 UTC 2017
+
+Error: syntax error, unexpected ':', expecting ',' or ';'
+File: /Bedwars_VH_By_Thinker_v0.1.phar/src/Epic/Bedwars
+Line: 52
+Type: notice
+
+THIS CRASH WAS CAUSED BY A PLUGIN
+
+Code:
+[43] use pocketmine\scheduler\PluginTask;
+[44] use pocketmine\tile\Chest;
+[45] use pocketmine\tile\Sign;
+[46] use pocketmine\tile\Tile;
+[47] use pocketmine\utils\Config;
+[48] use pocketmine\utils\TextFormat;
+[49] 
+[50] class Bedwars extends PluginBase implements Listener {
+[51] 
+[52]     public $prefix = TextFormat::WHITE."[".TextFormat::DARK_AQUA."Bedwars".TextFormat::WHITE."]".TextFormat:GREEN." ";
+[53]     public $registerSign = false;
+[54]     public $registerSignWHO = "";
+[55]     public $registerSignArena = "Arena1";
+[56]     public $registerBed = false;
+[57]     public $registerBedWHO = "";
+[58]     public $registerBedArena = "Arena1";
+[59]     public $registerBedTeam = "WHITE";
+[60]     public $mode = 0;
+[61]     public $arena = "Arena1";
+[62]     public $lasthit = array();
+
+Backtrace:
+#0 (): spl_autoload_call(string Epic\Bedwars)
+#1 /src/pocketmine/plugin/PharPluginLoader(63): class_exists(string Epic\Bedwars, boolean 1)
+#2 /src/pocketmine/plugin/PluginManager(311): pocketmine\plugin\PharPluginLoader->loadPlugin(string phar:///storage/emulated/0/PocketMine/plugins/Bedwars_VH_By_Thinker_v0.1.phar)
+#3 /src/pocketmine/plugin/PluginManager(245): pocketmine\plugin\PluginManager->loadPlugin(string /storage/emulated/0/PocketMine/plugins/Bedwars_VH_By_Thinker_v0.1.phar, array Array())
+#4 /src/pocketmine/Server(503): pocketmine\plugin\PluginManager->loadPlugins(string /storage/emulated/0/PocketMine/plugins/)
+#5 /src/pocketmine/PocketMine(488): pocketmine\Server->__construct(BaseClassLoader object, pocketmine\utils\MainLogger object, string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/, string /storage/emulated/0/PocketMine/, string /storage/emulated/0/PocketMine/plugins/, string unknown)
+#6 (1): require_once(string phar:///storage/emulated/0/PocketMine/PocketMine-MP.phar/src/pocketmine/PocketMine.php)
+
+Tesseract version: 0000000000000000000000000000000000000000 [Protocol 113; API 3.0.1]
+uname -a: Linux localhost 3.10.65-8631431 #2 SMP PREEMPT Fri Nov 18 13:31:37 KST 2016 armv7l
+PHP version: 7.0.3
+Zend version: 3.0.0
+OS : Linux, android
+
+Server uptime: 25 seconds
+Number of loaded worlds: 0
+Players online: 0/20
+
+Loaded plugins:
+ManyWorlds 2.1.0 by aliuly for API(s) 2.0.0
+FaceLogin 1.0.0 by Muqsit for API(s) 2.0.0, 3.0.0, 3.0.0-ALPHA4, 3.0.0-ALPHA5, 3.0.0-ALPHA6, 3.0.0-ALPHA67
+EconomyAPI 2.0.9 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyAuction 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyCasino 2.0.2 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyJob 2.0.4 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyLand 2.0.9 by onebone for API(s) 1.12.0
+EconomyPShop 2.0.2 by onebone for API(s) 1.12.0
+EconomySell 2.0.7 by onebone for API(s) 1.12.0
+EconomyShop 2.0.7 by onebone for API(s) 1.12.0
+ChatCensor 1.4 by EvolSoft for API(s) 1.9.0
+SClearLagg 1 by Sergey_Dertan for API(s) 1.8.0
+Broadcaster 1.16 by EvolSoft for API(s) 1.12.0
+EconomyTax 2.0.3 by onebone for API(s) 1.0.0, 1.1.0, 1.2.0, 1.2.1, 1.3.0, 1.3.1, 1.4.0, 1.4.1
+EconomyUsury 1.0.1 by onebone for API(s) 1.12.0
+AntiSpam 1.3 by xBeastMode for API(s) 2.0.0
+DevTools 1.11.0 by PocketMine Team for API(s) 3.0.0-ALPHA2
+AuthPES 0.2 by PocketMine Team, ThinkerS for API(s) 1.12.0

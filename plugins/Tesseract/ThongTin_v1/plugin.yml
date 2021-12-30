@@ -1,0 +1,23 @@
+name: ThongTin
+description: Thong Tin cho Server
+author: PMCoderTeam
+authors:
+- ThinkerS
+- NP-NghiaPham
+- Zacky
+version: 1.0
+main: ThinkerS\Main
+api: 2.0.0
+commands:
+ cachchoi:
+        description: cachchoi
+ muadat:
+        description: muatdat
+ tuyendung:
+        description: tuyendung
+ ytber:
+        description: ytber
+ thongtin:
+        description: thongtin
+ ipallserver:
+        description: ipallserver

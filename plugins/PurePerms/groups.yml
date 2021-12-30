@@ -1,0 +1,87 @@
+---
+Guest:
+  alias: gst
+  isDefault: true
+  inheritance: []
+  permissions:
+  - -essentials.kit
+  - -essentials.kit.other
+  - -pocketmine.command.me
+  - pchat.colored.format
+  - pchat.colored.nametag
+  - pocketmine.command.list
+  - pperms.command.ppinfo
+  - simpleauth.command.login
+  - simpleauth.command.register
+  worlds: []
+Admin:
+  alias: adm
+  inheritance:
+  - Guest
+  permissions:
+  - essentials.gamemode
+  - pocketmine.broadcast
+  - pocketmine.command.gamemode
+  - pocketmine.command.give
+  - pocketmine.command.kick
+  - pocketmine.command.teleport
+  - pocketmine.command.time
+  worlds: []
+Owner:
+  alias: owr
+  inheritance:
+  - Admin
+  permissions:
+  - essentials
+  - pocketmine.command
+  - pperms.command
+  worlds: []
+OP:
+  alias: op
+  inheritance: []
+  permissions:
+  - '*'
+  worlds: []
+1:
+  alias: ""
+  isDefault: false
+  inheritance: []
+  permissions: []
+  worlds: []
+Vip1:
+  alias: ""
+  isDefault: false
+  inheritance: []
+  permissions: []
+  worlds: []
+Vip2:
+  alias: ""
+  isDefault: false
+  inheritance: []
+  permissions: []
+  worlds: []
+Vip3:
+  alias: ""
+  isDefault: false
+  inheritance: []
+  permissions: []
+  worlds: []
+Vip4:
+  alias: ""
+  isDefault: false
+  inheritance: []
+  permissions: []
+  worlds: []
+Vip5:
+  alias: ""
+  isDefault: false
+  inheritance: []
+  permissions: []
+  worlds: []
+Vip6:
+  alias: ""
+  isDefault: false
+  inheritance: []
+  permissions: []
+  worlds: []
+...

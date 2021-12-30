@@ -1,0 +1,831 @@
+name: ChatCensor
+main: ChatCensor\Main
+version: "1.4"
+api: [1.9.0]
+load: STARTUP
+author: EvolSoft
+description: Block swear words and limit characters in chat
+website: https://www.evolsoft.tk
+
+commands:
+ chatcensor:
+   aliases: [cc, chatc, censor]
+   description: ChatCensor commands.
+   permission: chatcensor
+ mute:
+   description: ChatCensor Mute command.
+   permission: chatcensor.commands.mute
+ unmute:
+   description: ChatCensor Unmute command.
+   permission: chatcensor.commands.unmute
+ addword:
+   description: ChatCensor AddWord command.
+   permission: chatcensor.commands.addword
+ removeword:
+   description: ChatCensor RemoveWord command.
+   permission: chatcensor.commands.removeword
+permissions:
+ chatcensor:
+  default: op
+  description: ChatCensor permissions.
+  children:
+   chatcensor.bypass:
+    default: op
+    description: Bypass ChatCensor permissions.
+    children:
+     chatcensor.bypass.char-check:
+      default: op
+      description: Bypass ChatCensor Char-Check permissions.
+     chatcensor.bypass.censor:
+      default: op
+      description: Bypass ChatCensor Censor permissions.
+ chatcensor.commands:
+  default: op 
+  description: ChatCensor commands permissions.
+  children:
+   chatcensor.commands.help:
+    default: op
+    description: ChatCensor command Help permission.
+   chatcensor.commands.info:
+    default: op
+    description: ChatCensor command Info permission.
+   chatcensor.commands.reload:
+    default: op
+    description: ChatCensor command Reload permission.
+   chatcensor.commands.mute:
+    default: op
+    description: ChatCensor command Mute permission.
+   chatcensor.commands.unmute:
+    default: op
+    description: ChatCensor command Unmute permission.
+   chatcensor.commands.addword:
+    default: op
+    description: ChatCensor command AddWord permission.
+   chatcensor.commands.removeword:
+    default: op
+    description: ChatCensor command RemoveWord permission.
+<?php
+
+/*
+ * ChatCensor (v1.4) by EvolSoft
+ * Developer: EvolSoft (Flavius12)
+ * Website: http://www.evolsoft.tk
+ * Date: 27/12/2014 03:44 PM (UTC)
+ * Copyright & License: (C) 2014 EvolSoft
+ * Licensed under MIT (https://github.com/EvolSoft/ChatCensor/blob/master/LICENSE)
+ */
+
+namespace ChatCensor;
+
+use pocketmine\command\CommandExecutor;
+use pocketmine\command\CommandSender;
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerChatEvent;
+use pocketmine\Permission;
+use pocketmine\plugin\PluginBase;
+use pocketmine\utils\Config;
+use pocketmine\utils\TextFormat;
+
+class Main extends PluginBase{
+    
+
+	//About Plugin Const
+	const PRODUCER = "EvolSoft";
+	const VERSION = "1.4";
+	const MAIN_WEBSITE = "http://www.evolsoft.tk";
+	//Other Const
+	//Prefix
+	const PREFIX = "&c[-&aChatCensor&c-] ";
+	
+	public $cfg;
+	
+	public $muted;
+	
+	public function translateColors($symbol, $message){
+	
+		$message = str_replace($symbol."0", TextFormat::BLACK, $message);
+		$message = str_replace($symbol."1", TextFormat::DARK_BLUE, $message);
+		$message = str_replace($symbol."2", TextFormat::DARK_GREEN, $message);
+		$message = str_replace($symbol."3", TextFormat::DARK_AQUA, $message);
+		$message = str_replace($symbol."4", TextFormat::DARK_RED, $message);
+		$message = str_replace($symbol."5", TextFormat::DARK_PURPLE, $message);
+		$message = str_replace($symbol."6", TextFormat::GOLD, $message);
+		$message = str_replace($symbol."7", TextFormat::GRAY, $message);
+		$message = str_replace($symbol."8", TextFormat::DARK_GRAY, $message);
+		$message = str_replace($symbol."9", TextFormat::BLUE, $message);
+		$message = str_replace($symbol."a", TextFormat::GREEN, $message);
+		$message = str_replace($symbol."b", TextFormat::AQUA, $message);
+		$message = str_replace($symbol."c", TextFormat::RED, $message);
+		$message = str_replace($symbol."d", TextFormat::LIGHT_PURPLE, $message);
+		$message = str_replace($symbol."e", TextFormat::YELLOW, $message);
+		$message = str_replace($symbol."f", TextFormat::WHITE, $message);
+	
+		$message = str_replace($symbol."k", TextFormat::OBFUSCATED, $message);
+		$message = str_replace($symbol."l", TextFormat::BOLD, $message);
+		$message = str_replace($symbol."m", TextFormat::STRIKETHROUGH, $message);
+		$message = str_replace($symbol."n", TextFormat::UNDERLINE, $message);
+		$message = str_replace($symbol."o", TextFormat::ITALIC, $message);
+		$message = str_replace($symbol."r", TextFormat::RESET, $message);
+	
+		return $message;
+	}
+	
+	public function onEnable(){
+	    @mkdir($this->getDataFolder());
+	    @mkdir($this->getDataFolder() . "denied-words/");
+		$this->saveDefaultConfig();
+		$this->cfg = $this->getConfig()->getAll();
+		$this->getCommand("chatcensor")->setExecutor(new Commands\Commands($this));
+		$this->getCommand("addword")->setExecutor(new Commands\AddWord($this));
+		$this->getCommand("removeword")->setExecutor(new Commands\RemoveWord($this));
+		$this->getCommand("mute")->setExecutor(new Commands\Mute($this));
+		$this->getCommand("unmute")->setExecutor(new Commands\Unmute($this));
+		$this->getServer()->getPluginManager()->registerEvents(new EventListener($this), $this);
+	}
+	
+	public function getChars(){
+		$config = $this->getConfig()->getAll();
+		$chars = implode($config["char-check"]["allowed-chars"]);
+		return $chars;
+	}
+	
+	public function getWord($word){
+		if(file_exists($this->getDataFolder() . "denied-words/" . strtolower($word . ".yml"))){
+			$data = new Config($this->getDataFolder() . "denied-words/" . strtolower($word . ".yml"), Config::YAML);
+			return $data->getAll();
+		}else{
+			return false; //Word not found
+		}
+	}
+	
+	public function wordExists($word){
+		return file_exists($this->getDataFolder() . "denied-words/" . strtolower($word . ".yml"));
+	}
+	
+	public function addWord($word){
+		$word = strtolower($word);
+		$default = array(
+			"delete-message" => false,
+			"enable-replace" => true,
+			"replace-word" => "****",
+			"sender" => array(
+				"kick" => false,
+			    "ban" => false,
+		        ),
+			"kick" => array(
+				"message" => "Kicked for swearing!"
+			),
+			"ban" => array(
+				"message" => "Banned for swearing!"
+			)
+		);
+		$data = new Config($this->getDataFolder() . "denied-words/" . strtolower($word . ".yml"), Config::YAML);
+		$data->setAll($default);
+		$data->save();
+	}
+	
+	public function removeWord($word){
+		unlink($this->getDataFolder() . "denied-words/" . strtolower($word . ".yml"));
+	}
+	
+	public function mutePlayer($player){
+		$player = strtolower($player);
+		if(isset($this->muted[$player])){
+			//Player already muted
+			return false;
+		}else{
+			$this->muted[$player] = "";
+			//Player muted
+			return true;
+		}		
+	}
+	
+	public function unmutePlayer($player){
+		$player = strtolower($player);
+		if(isset($this->muted[$player])){
+			unset($this->muted[$player]);
+			//Player unmuted
+			return true;
+		}else{
+			//Player not muted
+			return false;
+		}
+	}
+	
+	public function isMuted($player){
+		$player = strtolower($player);
+		return isset($this->muted[$player]);
+	}
+	
+}
+?>---
+censor:
+ enabled: true
+ allow-bypassing: false
+ log-to-player: true
+mute:
+ log-to-player: true
+ log-unmute: true
+ keep-on-relogin: true
+char-check:
+ enabled: true
+ allow-bypassing: false
+ log-to-player: true
+ allow-backslash: false
+ allowed-chars:
+  - "Q"
+  - "W"
+  - "E"
+  - "R"
+  - "T"
+  - "Y"
+  - "U"
+  - "I"
+  - "O"
+  - "P"
+  - "A"
+  - "S"
+  - "D"
+  - "F"
+  - "G"
+  - "H"
+  - "J"
+  - "K"
+  - "L"
+  - "Z"
+  - "X"
+  - "C"
+  - "V"
+  - "B"
+  - "N"
+  - "M"
+  - "q"
+  - "w"
+  - "e"
+  - "r"
+  - "t"
+  - "y"
+  - "u"
+  - "i"
+  - "o"
+  - "p"
+  - "a"
+  - "s"
+  - "d"
+  - "f"
+  - "g"
+  - "h"
+  - "j"
+  - "k"
+  - "l"
+  - "z"
+  - "x"
+  - "c"
+  - "v"
+  - "b"
+  - "n"
+  - "m"
+  - "1"
+  - "2"
+  - "3"
+  - "4"
+  - "5"
+  - "6"
+  - "7"
+  - "8"
+  - "9"
+  - "0"
+  - "."
+  - ":"
+  - ","
+  - ";"
+  - "-"
+  - "_"
+  - "|"
+  - "!"
+  - "/"
+  - "?"
+...<?php
+
+/*
+ * ChatCensor (v1.4) by EvolSoft
+ * Developer: EvolSoft (Flavius12)
+ * Website: http://www.evolsoft.tk
+ * Date: 27/12/2014 03:44 PM (UTC)
+ * Copyright & License: (C) 2014 EvolSoft
+ * Licensed under MIT (https://github.com/EvolSoft/ChatCensor/blob/master/LICENSE)
+ */
+
+namespace ChatCensor\Commands;
+
+use pocketmine\plugin\PluginBase;
+use pocketmine\permission\Permission;
+use pocketmine\command\Command;
+use pocketmine\command\CommandExecutor;
+use pocketmine\command\CommandSender;
+use pocketmine\Player;
+use pocketmine\utils\TextFormat;
+
+use ChatCensor\Main;
+use ChatCensor\EventListener;
+
+class Commands extends PluginBase implements CommandExecutor{
+
+	public function __construct(Main $plugin){
+        $this->plugin = $plugin;
+    }
+    
+    public function onCommand(CommandSender $sender, Command $cmd, $label, array $args) {
+    	$fcmd = strtolower($cmd->getName());
+    	switch($fcmd){
+    		case "chatcensor":
+    			if(isset($args[0])){
+    				$args[0] = strtolower($args[0]);
+    				if($args[0]=="help"){
+    					if($sender->hasPermission("chatcensor.commands.help")){
+    						$sender->sendMessage($this->plugin->translateColors("&", "&c== &eAvailable Commands &c=="));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/cc info &c->&e Show info about this plugin"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/cc help &c->&e Show help about this plugin"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/cc reload &c->&e Reload the config"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/addword &c->&e Add a denied word"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/removeword &c->&e Remove a denied word"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/mute &c->&e Mute player"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/unmute &c->&e Unmute player"));
+    						break;
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    						break;
+    					}
+    				}elseif($args[0]=="info"){
+    					if($sender->hasPermission("chatcensor.commands.info")){
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&eChatCensor &av" . Main::VERSION . " &edeveloped by&a " . Main::PRODUCER));
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&eWebsite &a" . Main::MAIN_WEBSITE));
+    				        break;
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    						break;
+    					}
+    				}elseif($args[0]=="reload"){
+    					if($sender->hasPermission("chatcensor.commands.reload")){
+    						$this->plugin->reloadConfig();
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&aConfiguration Reloaded."));
+    				        break;
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    						break;
+    					}
+    				}else{
+    					if($sender->hasPermission("chatcensor")){
+    						$sender->sendMessage($this->plugin->translateColors("&",  Main::PREFIX . "&cSubcommand &a" . $args[0] . " &cnot found. Use &a/cc help &cto show available commands"));
+    						break;
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    						break;
+    					}
+    				}
+    				}else{
+    					if($sender->hasPermission("chatcensor.commands.help")){
+    						$sender->sendMessage($this->plugin->translateColors("&", "&c== &eAvailable Commands &c=="));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/cc info &c->&e Show info about this plugin"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/cc help &c->&e Show help about this plugin"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/cc reload &c->&e Reload the config"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/addword &c->&e Add a denied word"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/removeword &c->&e Remove a denied word"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/mute &c->&e Mute player"));
+    						$sender->sendMessage($this->plugin->translateColors("&", "&a/unmute &c->&e Unmute player"));
+    						break;
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    						break;
+    					}
+    				}
+    			}
+    	}
+}
+?><?php
+
+/*
+ * ChatCensor (v1.4) by EvolSoft
+ * Developer: EvolSoft (Flavius12)
+ * Website: http://www.evolsoft.tk
+ * Date: 27/12/2014 03:44 PM (UTC)
+ * Copyright & License: (C) 2014 EvolSoft
+ * Licensed under MIT (https://github.com/EvolSoft/ChatCensor/blob/master/LICENSE)
+ */
+
+namespace ChatCensor\Commands;
+
+use pocketmine\plugin\PluginBase;
+use pocketmine\permission\Permission;
+use pocketmine\command\Command;
+use pocketmine\command\CommandExecutor;
+use pocketmine\command\CommandSender;
+use pocketmine\Player;
+use pocketmine\utils\TextFormat;
+
+use ChatCensor\Main;
+use ChatCensor\EventListener;
+
+class AddWord extends PluginBase implements CommandExecutor{
+
+	public function __construct(Main $plugin){
+        $this->plugin = $plugin;
+    }
+    
+    public function onCommand(CommandSender $sender, Command $cmd, $label, array $args) {
+    	$fcmd = strtolower($cmd->getName());
+    	switch($fcmd){
+    		case "addword":
+    			if($sender->hasPermission("chatcensor.command.addword")){
+    				if(isset($args[0])){
+    					$args[0] = strtolower($args[0]);
+    					//Check if word exists
+    					if($this->plugin->wordExists($args[0])){
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cWord already added."));
+    					}else{
+    						$this->plugin->addWord($args[0]);
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&aWord added!"));
+    					}
+    				}else{
+    					$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cUsage: /addword <word>"));
+    				}
+    			}else{
+    				$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    				break;
+    			}
+    	}
+    }
+}<?php
+
+/*
+ * ChatCensor (v1.4) by EvolSoft
+ * Developer: EvolSoft (Flavius12)
+ * Website: http://www.evolsoft.tk
+ * Date: 27/12/2014 03:44 PM (UTC)
+ * Copyright & License: (C) 2014 EvolSoft
+ * Licensed under MIT (https://github.com/EvolSoft/ChatCensor/blob/master/LICENSE)
+ */
+
+namespace ChatCensor\Commands;
+
+use pocketmine\plugin\PluginBase;
+use pocketmine\permission\Permission;
+use pocketmine\command\Command;
+use pocketmine\command\CommandExecutor;
+use pocketmine\command\CommandSender;
+use pocketmine\Player;
+use pocketmine\utils\TextFormat;
+
+use ChatCensor\Main;
+use ChatCensor\EventListener;
+
+class RemoveWord extends PluginBase implements CommandExecutor{
+
+	public function __construct(Main $plugin){
+        $this->plugin = $plugin;
+    }
+    
+    public function onCommand(CommandSender $sender, Command $cmd, $label, array $args) {
+    	$fcmd = strtolower($cmd->getName());
+    	switch($fcmd){
+    		case "removeword":
+    			if($sender->hasPermission("chatcensor.command.removeword")){
+    				if(isset($args[0])){
+    					$args[0] = strtolower($args[0]);
+    					//Check if word exists
+    					if($this->plugin->wordExists($args[0])){
+    						$this->plugin->removeWord($args[0]);
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&aWord removed!"));
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cWord not found."));
+    					}
+    				}else{
+    					$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cUsage: /removeword <word>"));
+    				}
+    			}else{
+    				$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    				break;
+    			}
+    	}
+    }
+}<?php
+
+/*
+ * ChatCensor (v1.4) by EvolSoft
+ * Developer: EvolSoft (Flavius12)
+ * Website: http://www.evolsoft.tk
+ * Date: 27/12/2014 03:44 PM (UTC)
+ * Copyright & License: (C) 2014 EvolSoft
+ * Licensed under MIT (https://github.com/EvolSoft/ChatCensor/blob/master/LICENSE)
+ */
+
+namespace ChatCensor\Commands;
+
+use pocketmine\plugin\PluginBase;
+use pocketmine\permission\Permission;
+use pocketmine\command\Command;
+use pocketmine\command\CommandExecutor;
+use pocketmine\command\CommandSender;
+use pocketmine\Player;
+use pocketmine\utils\TextFormat;
+
+use ChatCensor\Main;
+use ChatCensor\EventListener;
+
+class Mute extends PluginBase implements CommandExecutor{
+
+	public function __construct(Main $plugin){
+        $this->plugin = $plugin;
+    }
+    
+    public function onCommand(CommandSender $sender, Command $cmd, $label, array $args) {
+    	$fcmd = strtolower($cmd->getName());
+    	switch($fcmd){
+    		case "mute":
+    			if($sender->hasPermission("chatcensor.command.mute")){
+    				if(isset($args[0])){
+    					$args[0] = strtolower($args[0]);
+    					//Check if player exists
+    					if($this->plugin->getServer()->getPlayer($args[0]) != null){
+    						$player = $args[0];
+    						//Check if player is already muted
+    						if($this->plugin->mutePlayer($player)){
+    							$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&aYou muted &b" . $player));
+    						}else{
+    							$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cPlayer " . $player . " is already muted!"));
+    						}
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cPlayer not found!"));
+    					}
+    				}else{
+    					$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cUsage: /mute <player>"));
+    				}
+    			}else{
+    				$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    				break;
+    			}
+    	}
+    }
+}<?php
+
+/*
+ * ChatCensor (v1.4) by EvolSoft
+ * Developer: EvolSoft (Flavius12)
+ * Website: http://www.evolsoft.tk
+ * Date: 27/12/2014 03:44 PM (UTC)
+ * Copyright & License: (C) 2014 EvolSoft
+ * Licensed under MIT (https://github.com/EvolSoft/ChatCensor/blob/master/LICENSE)
+ */
+
+namespace ChatCensor\Commands;
+
+use pocketmine\plugin\PluginBase;
+use pocketmine\permission\Permission;
+use pocketmine\command\Command;
+use pocketmine\command\CommandExecutor;
+use pocketmine\command\CommandSender;
+use pocketmine\Player;
+use pocketmine\utils\TextFormat;
+
+use ChatCensor\Main;
+use ChatCensor\EventListener;
+
+class Unmute extends PluginBase implements CommandExecutor{
+
+	public function __construct(Main $plugin){
+        $this->plugin = $plugin;
+    }
+    
+    public function onCommand(CommandSender $sender, Command $cmd, $label, array $args) {
+    	$fcmd = strtolower($cmd->getName());
+    	switch($fcmd){
+    		case "unmute":
+    			if($sender->hasPermission("chatcensor.command.unmute")){
+    				if(isset($args[0])){
+    					$args[0] = strtolower($args[0]);
+    					//Check if player exists
+    					if($this->plugin->getServer()->getPlayer($args[0]) != null){
+    						$player = $args[0];
+    						//Check if player is already muted
+    						if($this->plugin->unmutePlayer($player)){
+    							$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&aYou unmuted &b" . $player));
+    							//Check if log unmute is enabled
+    							$this->cfg = $this->plugin->getConfig()->getAll();
+    							if($this->cfg["mute"]["log-unmute"]){
+    								$this->plugin->getServer()->getPlayer($player)->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&aYou have been unmuted"));
+    							}
+    						}else{
+    							$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cPlayer " . $player . " is not muted!"));
+    						}
+    					}else{
+    						$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cPlayer not found!"));
+    					}
+    				}else{
+    					$sender->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cUsage: /unmute <player>"));
+    				}
+    			}else{
+    				$sender->sendMessage($this->plugin->translateColors("&", "&cYou don't have permissions to use this command"));
+    				break;
+    			}
+    	}
+    }
+}<?php
+
+/*
+ * ChatCensor (v1.4) by EvolSoft
+ * Developer: EvolSoft (Flavius12)
+ * Website: http://www.evolsoft.tk
+ * Date: 27/12/2014 03:44 PM (UTC)
+ * Copyright & License: (C) 2014 EvolSoft
+ * Licensed under MIT (https://github.com/EvolSoft/ChatCensor/blob/master/LICENSE)
+ */
+
+namespace ChatCensor;
+
+use pocketmine\event\Listener;
+use pocketmine\event\player\PlayerCommandPreprocessEvent;
+use pocketmine\event\player\PlayerQuitEvent;
+use pocketmine\permission\Permission;
+use pocketmine\Player;
+use pocketmine\plugin\PluginBase;
+use pocketmine\utils\Config;
+use pocketmine\utils\TextFormat;
+
+class EventListener extends PluginBase implements Listener{
+	
+	public function __construct(Main $plugin){
+		$this->plugin = $plugin;
+	}
+	
+	public function onChatCommand(PlayerCommandPreprocessEvent $event){
+		$message = $event->getMessage();
+		$player = $event->getPlayer();
+		$this->cfg = $this->plugin->getConfig()->getAll();
+		//Check if message is not a command
+		if($message{0} != "/"){
+			//Check if player is muted
+			if($this->plugin->isMuted(strtolower($player->getName()))){
+				if($this->cfg["mute"]["log-to-player"]){
+					$player->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cYou can't send messages because you were muted"));
+				}
+				$event->setCancelled(true);
+			}else{
+				//if char-check finds an illegal char, the censor will be bypassed
+				$status = 0;
+				//Check if CharCheck is enabled
+				if($this->cfg["char-check"]["enabled"] == true){
+					//Checking if bypass is allowed
+					if($this->cfg["char-check"]["allow-bypassing"] == true){
+						//Checking CharCheck bypass permission
+						if($player->hasPermission("chatcensor.bypass.char-check") != true){
+							//Char checker
+							$getchar = $this->plugin->getChars();
+							$getchar = $getchar . " ";
+							if($this->cfg["char-check"]["allow-backslash"] == true){
+								$getchar = $getchar . "\\";
+							}
+							$allowedchr = str_split($getchar);
+							$messagearray = str_split($message);
+							for($i = 0; $i < count($messagearray); $i++){
+								if(in_array($messagearray[$i], $allowedchr)==false){
+									if($this->cfg["char-check"]["log-to-player"] == true){
+										$player->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cYou can't send this message: it contains invalid characters."));
+									}
+									$status = 1;
+									$event->setCancelled(true);
+								}
+							}
+						}
+					}else{
+						//No-bypassing
+						//Char checker
+						$getchar = $this->plugin->getChars();
+						$getchar = $getchar . " ";
+						if($this->cfg["char-check"]["allow-backslash"] == true){
+							$getchar = $getchar . "\\";
+						}
+						$allowedchr = str_split($getchar);
+						$messagearray = str_split($message);
+						for($i = 0; $i < count($messagearray); $i++){
+							if(in_array($messagearray[$i], $allowedchr)==false){
+								if($this->cfg["char-check"]["log-to-player"] == true){
+									$player->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cYou can't send this message: it contains invalid characters."));
+								}
+								$status = 1;
+								$event->setCancelled(true);
+							}
+						}
+					}
+				}
+				//Check if Censor is enabled
+				if($this->cfg["censor"]["enabled"] == true && $status == 0){
+					$iskicked = 0;
+					$isbanned = 0;
+					$result = 0;
+					//Checking if bypass is allowed
+					if($this->cfg["censor"]["allow-bypassing"] == true){
+						//Checking CharCheck bypass permission
+						if($player->hasPermission("chatcensor.bypass.censor") != true){
+							$tempmessage = $message;
+							$messagewords = str_word_count($message, 1);
+							for($i = 0; $i < count($messagewords); $i++){
+								if($this->plugin->wordExists($messagewords[$i])){
+									//Check Word Config
+									$tmp = $this->plugin->getWord($messagewords[$i]);
+									if($tmp["delete-message"] == true){
+										$event->setCancelled(true);
+									}
+									if($tmp["enable-replace"] == true){
+										/*$length = strlen($messagewords[$i]);
+										 $replace = "";
+										for ($l = 0; $l < $length; $l++){
+										$replace = $replace . "*";
+										}
+										$tempmessage = str_replace($messagewords[$i],$replace,$tempmessage);*/
+										$replace = $tmp["replace-word"];
+										$tempmessage = str_replace($messagewords[$i],$replace,$tempmessage);
+									}
+									if($this->cfg["censor"]["log-to-player"] == true){
+										$result = 1;
+									}
+									if($tmp["sender"]["kick"] == true){
+										if($iskicked == 0 && $isbanned == 0){
+											$player->kick($tmp["kick"]["message"]);
+											$iskicked = 1;
+										}
+									}else{
+										if($tmp["sender"]["ban"] == true){
+											if($iskicked == 0 && $isbanned == 0){
+												$this->plugin->getServer()->getNameBans()->addBan($player->getName(), $tmp["ban"]["message"]);
+												$player->kick($tmp["ban"]["message"]);
+												$isbanned = 1;
+											}
+										}
+									}
+								}
+							}
+							$event->setMessage($tempmessage);
+							if($result == 1){
+								$player->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cNo Swearing!"));
+							}
+						}
+					}else{
+						//No-bypassing
+						$tempmessage = $message;
+						$messagewords = str_word_count($message, 1);
+						for($i = 0; $i < count($messagewords); $i++){
+							if($this->plugin->wordExists($messagewords[$i])){
+								//Check Word Config
+								$tmp = $this->plugin->getWord($messagewords[$i]);
+								if($tmp["delete-message"] == true){
+									$event->setCancelled(true);
+								}
+								if($tmp["enable-replace"] == true){
+									/*$length = strlen($messagewords[$i]);
+									 $replace = "";
+									for ($l = 0; $l < $length; $l++){
+									$replace = $replace . "*";
+									}
+									$tempmessage = str_replace($messagewords[$i],$replace,$tempmessage);*/
+									$replace = $tmp["replace-word"];
+									$tempmessage = str_replace($messagewords[$i],$replace,$tempmessage);
+								}
+								if($this->cfg["censor"]["log-to-player"] == true){
+									$result = 1;
+								}
+								if($tmp["sender"]["kick"] == true){
+									if($iskicked == 0 && $isbanned == 0){
+										$player->kick($tmp["kick"]["message"]);
+										$iskicked = 1;
+									}
+								}else{
+									if($tmp["sender"]["ban"] == true){
+										if($iskicked == 0 && $isbanned == 0){
+											$this->plugin->getServer()->getNameBans()->addBan($player->getName(), $tmp["ban"]["message"]);
+											$player->kick($tmp["ban"]["message"]);
+											$isbanned = 1;
+										}
+									}
+								}
+							}
+						}
+						$event->setMessage($tempmessage);
+						if($result == 1){
+							$player->sendMessage($this->plugin->translateColors("&", Main::PREFIX . "&cNo Swearing!"));
+						}
+					}
+				}	
+			}
+		}
+	}
+	
+	public function onQuit(PlayerQuitEvent $event){
+		$this->cfg = $this->plugin->getConfig()->getAll();
+		$player = $event->getPlayer();
+		if($this->cfg["mute"]["keep-on-relogin"] != true){
+			$this->plugin->unmutePlayer($player->getName());
+		}
+	}
+	
+}
+?>

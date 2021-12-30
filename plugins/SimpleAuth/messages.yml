@@ -1,0 +1,27 @@
+# SimpleAuth 1.4.0 language file
+
+join:
+ message1: "§b\n                  §a•-=|§c♦§a|§b UC§6VN§a |§c♦§a|=-•§r\n§f•§a Bạn cần§6 đăng nhập§a để chơi nhé!§f\n•§a /help để§b tìm hiểu các câu lệnh§f•§a Dùng§e /chpwd <Mật khẩu cũ> §avà làm theo hướng dẫn để đổi mật khẩu nhé§f•§a Vote cho máy chủ tại:§e\n§f•§a Donate Cho Máy Chủ:§f\n•------------------------"
+ message2: ""
+ register: "§f• §a Nhập§6 2§a lần§d mật khẩu§a để bắt đầu chơi bạn nhé!"
+ login: " §f•§a Vui lòng nhập§d mật khẩu§a để chơi!"
+ popup: "§c✖§a Bạn chưa đăng nhập"
+
+register:
+ usage: "/register <password>"
+ description: "Registers an account"
+ permission: "You do not have permission to use the register command!"
+ error:
+  password: "Your password is too short!"
+  registered: "This account is already registered."
+  general: "Error during authentication."
+
+login:
+ usage: "/login <password>"
+ description: "Logs into an account"
+ permission: "You do not have permission to use the login command!"
+ success: "§f•§a You have been authenticated §f(§aĐăng nhập thành công§f)§4\n--------------------------§f\n•§e Vote for us:§a bit.do/§f\n•§b Donate for us to get VIP rank!§r"
+ error:
+  password: "Incorrect password!"
+  registered: "This account is not registered."
+  block: "Too many tries!"

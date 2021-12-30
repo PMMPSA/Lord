@@ -1,0 +1,13 @@
+---
+en:
+  kill: ' §o§2fue asesinado '
+  cannotjoin: §b§oNo te puedes unir.
+  seconds: §osegundos para iniciar
+  won: '§o§bGano §cMurder§b en la arena: §c'
+  §f§o§b: §b§oEntrastes Al Juego
+  Ase: §f§o§bEl Asesino Era
+  remainingminutes: §ominutos restantes!
+  remainingseconds: §osegundos restantes!
+  nowinner: '§o§cNo hay ganadores en la arena: §b'
+  moreplayers: §b§oFaltan mas Jugadores!
+...
